@@ -1,13 +1,5 @@
-import 'dart:async';
+library calender_manager;
 
-import 'package:flutter/services.dart';
-
-class CalendarManager {
-  static const MethodChannel _channel =
-      const MethodChannel('be.rmdy.calendar_manager');
-
-  static Future<String> get platformVersion async {
-    final String version = await _channel.invokeMethod('getPlatformVersion');
-    return version;
-  }
-}
+export 'src/models.dart';
+export 'src/calendar_manager.dart';
+export 'src/exceptions.dart';

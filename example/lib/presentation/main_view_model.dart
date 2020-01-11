@@ -1,4 +1,4 @@
-import 'package:calendar_manager_example/services/calendar_service.dart';
+import 'package:calendar_manager/calendar_manager.dart';
 import 'package:flutter/material.dart';
 
 class ViewModel extends ChangeNotifier {}
@@ -7,7 +7,7 @@ abstract class MainViewModel implements ViewModel {
   bool get isLoading;
   String get version;
 
-  factory MainViewModel() => MainViewModelImpl(CalendarService());
+  factory MainViewModel() => MainViewModelImpl(CalendarManager());
 }
 
 class MainViewModelImpl extends ViewModel implements MainViewModel {
@@ -16,16 +16,29 @@ class MainViewModelImpl extends ViewModel implements MainViewModel {
   @override
   bool isLoading;
 
-  final CalendarService calendarService;
+  static const CALENDAR_ID = '123543';
 
-  MainViewModelImpl(this.calendarService) {
+  final CalendarManager calendarManager;
+
+  MainViewModelImpl(this.calendarManager) {
     load();
   }
 
   load() async {
     isLoading = true;
     notifyListeners();
-    version = await calendarService.fetchVersion();
+    final calendar = const Calendar(id: CALENDAR_ID, name: "Calendar Example");
+
+    final event = Event(
+      title: "Event 1",
+      startDate: DateTime.now().add(Duration(hours: 1)),
+      endDate: DateTime.now().add(Duration(hours: 2)),
+      calenderId: calendar.id,
+      location: "New York",
+      description: "Description 1",
+    );
+    await calendarManager.createCalendar(calendar);
+    await calendarManager.createOrUpdateEvent(event);
     isLoading = false;
     notifyListeners();
   }
