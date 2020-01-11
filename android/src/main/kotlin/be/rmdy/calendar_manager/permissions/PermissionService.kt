@@ -12,9 +12,10 @@ class PermissionService : PluginRegistry.RequestPermissionsResultListener {
     companion object {
         private const val TAG = "PermissionService"
         private const val REQUEST_CODE: Int = 1345431138
+        private var grantedCompleter: CompletableDeferred<Boolean>? = null
     }
 
-    private var grantedCompleter: CompletableDeferred<Boolean>? = null
+
 
 
     suspend fun requestPermissionsIfNeeded(activity: Activity, permissions: List<String>): Boolean {
@@ -25,7 +26,7 @@ class PermissionService : PluginRegistry.RequestPermissionsResultListener {
         return if (notGrantedPermissions.isNotEmpty()) {
             grantedCompleter?.let {
                 if (it.isActive)
-                    it.completeExceptionally(Exception("already waiting for permissions"))
+                    it.cancel()
             }
             grantedCompleter = CompletableDeferred()
             ActivityCompat.requestPermissions(activity, permissions.toTypedArray(), REQUEST_CODE)
@@ -39,9 +40,9 @@ class PermissionService : PluginRegistry.RequestPermissionsResultListener {
         return when (requestCode) {
             REQUEST_CODE -> {
                 val granted = grantResults.all { it == PackageManager.PERMISSION_GRANTED }
-                grantedCompleter!!.complete(granted)
+                grantedCompleter?.complete(granted)
+                true
             }
-
             else -> false
         }
     }

@@ -22,8 +22,16 @@ class CalendarManager {
     await _invokeMethod('createCalender', calendar);
   }
 
-  Future<T> _invokeMethod<T>(String method, dynamic args) {
-    return _channel.invokeMethod(method, jsonEncode(args));
+  Future<T> _invokeMethod<T>(String method, dynamic args) async {
+    print('invokeMethod: $method, $args');
+    try {
+      final result = await _channel.invokeMethod(method, jsonEncode(args));
+      print("result: $result");
+      return result;
+    } catch (ex) {
+      print(ex);
+      return null;
+    }
   }
 
   Future<void> deleteAllEventsByCalendarId(String calendarId) async {

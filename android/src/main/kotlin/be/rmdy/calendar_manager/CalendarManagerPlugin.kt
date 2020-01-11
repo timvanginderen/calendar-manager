@@ -1,5 +1,7 @@
 package be.rmdy.calendar_manager
 
+import android.os.Handler
+import android.os.Looper
 import androidx.annotation.NonNull
 import be.rmdy.calendar_manager.exceptions.CalendarManagerException
 import be.rmdy.calendar_manager.exceptions.NotImplementedMethodException
@@ -13,10 +15,7 @@ import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
 import io.flutter.plugin.common.PluginRegistry.Registrar
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import kotlinx.serialization.internal.ArrayListSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonConfiguration
@@ -28,9 +27,8 @@ class CalendarManagerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
 
     private val scope = CoroutineScope(job + Dispatchers.Main.immediate)
 
-    lateinit var delegate: CalendarManagerDelegate
-
-   private val json = Json(JsonConfiguration.Stable)
+    private val json = Json(JsonConfiguration.Stable)
+    private val delegate: CalendarManagerDelegate = CalendarManagerDelegate()
 
     override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         val channel = MethodChannel(flutterPluginBinding.binaryMessenger, CHANNEL_NAME)
@@ -39,12 +37,12 @@ class CalendarManagerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
     }
 
     private fun init(registrar: Registrar) = apply {
-        delegate = CalendarManagerDelegate(context = registrar.context())
+        delegate.context = registrar.context()
         onNewBindingDelegate(BindingDelegate.registrar(registrar))
     }
 
     private fun init(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) = apply {
-        delegate = CalendarManagerDelegate(context = flutterPluginBinding.applicationContext)
+        delegate.context = flutterPluginBinding.applicationContext
     }
 
     // This static function is optional and equivalent to onAttachedToEngine. It supports the old
@@ -67,35 +65,49 @@ class CalendarManagerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
         }
     }
 
+    private fun assertMainThread() {
+        check(Looper.myLooper() == Looper.getMainLooper())
+    }
+
     override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
-        scope.launch {
-            try {
-                val success = handleMethod(call.method, requireNotNull(call.arguments()) { "arguments = null" })
-                result.success(success)
-            } catch (ex:CalendarManagerException) {
-                result.error(ex.errorCode, ex.errorMessage, ex.errorDetails)
-            } catch (ex:NotImplementedMethodException) {
-                result.notImplemented()
-            }
+        GlobalScope.launch(context = Dispatchers.Main) {
+            assertMainThread()
+            sendBackResult(result, call)
+        }
+
+    }
+
+
+    private suspend fun sendBackResult(result: Result, call:MethodCall) {
+        try {
+            result.success(handleMethod(call.method, requireNotNull(call.arguments()) { "arguments = null" }))
+        } catch (ex: CalendarManagerException) {
+            result.error(ex.errorCode, ex.errorMessage, ex.errorDetails)
+        } catch (ex: NotImplementedMethodException) {
+            result.notImplemented()
+        } catch (ex: Exception) {
+            result.error("UNKNOWN", ex.message, null)
         }
     }
 
+
     private suspend fun handleMethod(method: String, jsonArgs: String): Any? {
-       return when (method) {
+        println("handleMethod: $method")
+        return when (method) {
             "createCalender" -> {
                 val calendar = json.parse(Calendar.serializer(), jsonArgs)
                 delegate.createCalendar(calendar)
             }
-            "createEvents"-> {
+            "createEvents" -> {
                 val event = json.parse(ArrayListSerializer(Event.serializer()), jsonArgs)
                 delegate.createEvents(event)
             }
-           "deleteAllEventsByCalendarId" -> {
-               val calendarId = json.parse(String.serializer(), jsonArgs)
-               delegate.deleteAllEventsByCalendarId(calendarId)
-           }
+            "deleteAllEventsByCalendarId" -> {
+                val calendarId = json.parse(String.serializer(), jsonArgs)
+                delegate.deleteAllEventsByCalendarId(calendarId)
+            }
             else -> {
-               throw NotImplementedMethodException()
+                throw NotImplementedMethodException()
             }
         }
     }
@@ -119,7 +131,7 @@ class CalendarManagerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
     }
 
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
-        binding.addRequestPermissionsResultListener(delegate)
+        onNewBindingDelegate(BindingDelegate.activityPluginBinding(binding))
     }
 
     override fun onDetachedFromActivityForConfigChanges() {

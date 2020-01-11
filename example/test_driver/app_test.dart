@@ -5,7 +5,7 @@ import 'package:test/test.dart';
 void main() {
   group('Calender Manager', () {
     FlutterDriver driver;
-    final versionTextFinder = find.byValueKey('version');
+    final addEventFinder = find.byValueKey('addEvent');
     final loadingFinder = find.byValueKey('loading');
 
     // Connect to the Flutter driver before running any tests.
@@ -26,10 +26,9 @@ void main() {
 
     setUp(() {});
 
-    test('version contains Android', () async {
-      await driver.waitForAbsent(loadingFinder);
-      final version = await driver.getText(versionTextFinder);
-      expect(version, contains("Android"));
+    test('Add event succcess', () async {
+      await driver.tap(addEventFinder);
+      await Future.delayed(Duration(milliseconds: 10000));
     });
   });
 }

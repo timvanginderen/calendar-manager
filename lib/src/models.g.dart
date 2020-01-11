@@ -8,7 +8,7 @@ part of 'models.dart';
 
 Event _$EventFromJson(Map<String, dynamic> json) {
   return Event(
-    calenderId: json['calenderId'] as String,
+    calendarId: json['calendarId'] as String,
     title: json['title'] as String,
     startDate: const DateJsonConverter().fromJson(json['startDate'] as int),
     endDate: const DateJsonConverter().fromJson(json['endDate'] as int),
@@ -18,7 +18,7 @@ Event _$EventFromJson(Map<String, dynamic> json) {
 }
 
 Map<String, dynamic> _$EventToJson(Event instance) => <String, dynamic>{
-      'calenderId': instance.calenderId,
+      'calendarId': instance.calendarId,
       'title': instance.title,
       'description': instance.description,
       'location': instance.location,

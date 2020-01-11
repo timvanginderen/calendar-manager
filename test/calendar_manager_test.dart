@@ -49,7 +49,7 @@ void main() {
         startDate:
             DateTime.now().truncateMicroseconds().add(Duration(hours: 1)),
         endDate: DateTime.now().truncateMicroseconds().add(Duration(hours: 2)),
-        calenderId: calendar.id,
+        calendarId: calendar.id,
         location: "New York",
         description: "Description 1",
       );

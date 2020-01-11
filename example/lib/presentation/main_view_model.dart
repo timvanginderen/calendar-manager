@@ -5,39 +5,48 @@ class ViewModel extends ChangeNotifier {}
 
 abstract class MainViewModel implements ViewModel {
   bool get isLoading;
-  String get version;
+
+  Future<void> onAddEventClick();
 
   factory MainViewModel() => MainViewModelImpl(CalendarManager());
 }
 
+const TEST_CALENDAR_ID = '123543';
+
 class MainViewModelImpl extends ViewModel implements MainViewModel {
   @override
-  String version;
-  @override
-  bool isLoading;
-
-  static const CALENDAR_ID = '123543';
+  bool isLoading = false;
 
   final CalendarManager calendarManager;
 
-  MainViewModelImpl(this.calendarManager) {
-    load();
+  MainViewModelImpl(this.calendarManager);
+
+  @override
+  Future<void> onAddEventClick() async {
+    try {
+      await load();
+    } catch (e, s) {
+      print(e);
+      print(s);
+    }
   }
 
-  load() async {
+  Future<void> load() async {
     isLoading = true;
     notifyListeners();
-    final calendar = const Calendar(id: CALENDAR_ID, name: "Calendar Example");
+    final calendar =
+        const Calendar(id: TEST_CALENDAR_ID, name: "Calendar Example");
 
     final event = Event(
       title: "Event 1",
       startDate: DateTime.now().add(Duration(hours: 1)),
       endDate: DateTime.now().add(Duration(hours: 2)),
-      calenderId: calendar.id,
+      calendarId: calendar.id,
       location: "New York",
       description: "Description 1",
     );
     await calendarManager.createCalendar(calendar);
+    print('created calender');
     await calendarManager.deleteAllEventsByCalendarId(calendar.id);
     await calendarManager.createEvents([event]);
     isLoading = false;

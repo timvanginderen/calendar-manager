@@ -8,17 +8,17 @@ part 'models.g.dart';
 @JsonSerializable()
 @DateJsonConverter()
 class Event {
-  final String calenderId, title, description, location;
+  final String calendarId, title, description, location;
   final DateTime startDate, endDate;
 
   const Event({
-    @required this.calenderId,
+    @required this.calendarId,
     @required this.title,
     @required this.startDate,
     @required this.endDate,
     this.description,
     this.location,
-  })  : assert(calenderId != null),
+  })  : assert(calendarId != null),
         assert(title != null),
         assert(startDate != null),
         assert(endDate != null);
@@ -32,7 +32,7 @@ class Event {
       identical(this, other) ||
       other is Event &&
           runtimeType == other.runtimeType &&
-          calenderId == other.calenderId &&
+          calendarId == other.calendarId &&
           title == other.title &&
           description == other.description &&
           location == other.location &&
@@ -41,7 +41,7 @@ class Event {
 
   @override
   int get hashCode =>
-      calenderId.hashCode ^
+      calendarId.hashCode ^
       title.hashCode ^
       description.hashCode ^
       location.hashCode ^
@@ -50,7 +50,7 @@ class Event {
 
   @override
   String toString() {
-    return 'Event{calenderId: $calenderId, title: $title, description: $description, location: $location, startDate: $startDate, endDate: $endDate}';
+    return 'Event{calenderId: $calendarId, title: $title, description: $description, location: $location, startDate: $startDate, endDate: $endDate}';
   }
 }
 

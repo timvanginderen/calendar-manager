@@ -11,11 +11,13 @@ class HomeScreen extends StatelessWidget {
         appBar: AppBar(
           title: const Text('Plugin example app'),
         ),
-        body: buildBody(),
+        body: HomeScreenContent(),
       ),
     );
   }
+}
 
+class HomeScreenContent extends StatelessWidget {
   Widget buildLoading() {
     return Center(
         child: CircularProgressIndicator(
@@ -23,20 +25,20 @@ class HomeScreen extends StatelessWidget {
     ));
   }
 
-  Widget buildBody() {
-    return Builder(
-      builder: (context) {
-        final MainViewModel viewModel = Provider.of(context);
-        if (viewModel.isLoading) {
-          return buildLoading();
-        }
-        return Center(
-          child: Text(
-            'Running on: ${viewModel.version}\n',
-            key: Key("version"),
-          ),
-        );
-      },
+  @override
+  Widget build(BuildContext context) {
+    final MainViewModel viewModel = Provider.of(context);
+    assert(viewModel != null);
+    assert(viewModel.isLoading != null);
+    if (viewModel.isLoading) {
+      return buildLoading();
+    }
+    return Center(
+      child: RaisedButton(
+        child: Text('Create calender and add events'),
+        onPressed: viewModel.onAddEventClick,
+        key: Key("addEvent"),
+      ),
     );
   }
 }
