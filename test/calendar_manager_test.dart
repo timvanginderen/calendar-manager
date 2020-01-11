@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:calendar_manager/calendar_manager.dart';
 
 void main() {
-  const MethodChannel channel = MethodChannel('calendar_manager');
+  const MethodChannel channel = MethodChannel('be.rmdy.calendar_manager');
 
   TestWidgetsFlutterBinding.ensureInitialized();
 

@@ -1,6 +1,6 @@
 package be.rmdy.calendar_manager
 
-import androidx.annotation.NonNull;
+import androidx.annotation.NonNull
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -9,10 +9,10 @@ import io.flutter.plugin.common.MethodChannel.Result
 import io.flutter.plugin.common.PluginRegistry.Registrar
 
 /** CalendarManagerPlugin */
-public class CalendarManagerPlugin: FlutterPlugin, MethodCallHandler {
+class CalendarManagerPlugin: FlutterPlugin, MethodCallHandler {
   override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
-    val channel = MethodChannel(flutterPluginBinding.getFlutterEngine().getDartExecutor(), "calendar_manager")
-    channel.setMethodCallHandler(CalendarManagerPlugin());
+    val channel = MethodChannel(flutterPluginBinding.binaryMessenger, NAME)
+    channel.setMethodCallHandler(CalendarManagerPlugin())
   }
 
   // This static function is optional and equivalent to onAttachedToEngine. It supports the old
@@ -25,9 +25,10 @@ public class CalendarManagerPlugin: FlutterPlugin, MethodCallHandler {
   // depending on the user's project. onAttachedToEngine or registerWith must both be defined
   // in the same class.
   companion object {
+    const val NAME = "be.rmdy.calendar_manager"
     @JvmStatic
     fun registerWith(registrar: Registrar) {
-      val channel = MethodChannel(registrar.messenger(), "calendar_manager")
+      val channel = MethodChannel(registrar.messenger(), NAME)
       channel.setMethodCallHandler(CalendarManagerPlugin())
     }
   }

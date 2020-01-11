@@ -3,7 +3,7 @@ import UIKit
 
 public class SwiftCalendarManagerPlugin: NSObject, FlutterPlugin {
   public static func register(with registrar: FlutterPluginRegistrar) {
-    let channel = FlutterMethodChannel(name: "calendar_manager", binaryMessenger: registrar.messenger())
+    let channel = FlutterMethodChannel(name: "be.rmdy.calendar_manager", binaryMessenger: registrar.messenger())
     let instance = SwiftCalendarManagerPlugin()
     registrar.addMethodCallDelegate(instance, channel: channel)
   }
