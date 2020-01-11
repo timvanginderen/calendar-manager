@@ -1,0 +1,22 @@
+PODS:
+  - calendar_manager (0.0.1):
+    - Flutter
+  - Flutter (1.0.0)
+
+DEPENDENCIES:
+  - calendar_manager (from `.symlinks/plugins/calendar_manager/ios`)
+  - Flutter (from `Flutter`)
+
+EXTERNAL SOURCES:
+  calendar_manager:
+    :path: ".symlinks/plugins/calendar_manager/ios"
+  Flutter:
+    :path: Flutter
+
+SPEC CHECKSUMS:
+  calendar_manager: 576564ce8d68dbe7ec1758175e5171f2af9ada6f
+  Flutter: 0e3d915762c693b495b44d77113d4970485de6ec
+
+PODFILE CHECKSUM: 1b66dae606f75376c5f2135a8290850eeb09ae83
+
+COCOAPODS: 1.7.5
