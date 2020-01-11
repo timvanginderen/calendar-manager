@@ -19,13 +19,21 @@ class CalendarManager {
 
   Future<void> createCalendar(Calendar calendar) async {
     assert(calendar != null);
-    await _channel.invokeMethod(
-        'createCalender', jsonEncode(calendar.toJson()));
+    await _invokeMethod('createCalender', calendar);
   }
 
-  Future<void> createOrUpdateEvent(Event event) async {
-    assert(event != null);
-    await _channel.invokeMethod(
-        'createOrUpdateEvent', jsonEncode(event.toJson()));
+  Future<T> _invokeMethod<T>(String method, dynamic args) {
+    return _channel.invokeMethod(method, jsonEncode(args));
+  }
+
+  Future<void> deleteAllEventsByCalendarId(String calendarId) async {
+    assert(calendarId != null);
+    await _invokeMethod("deleteAllEventsByCalendarId", calendarId);
+  }
+
+  Future<void> createEvents(Iterable<Event> events) async {
+    assert(events != null);
+    assert(events.isNotEmpty);
+    await _invokeMethod("createEvents", events);
   }
 }

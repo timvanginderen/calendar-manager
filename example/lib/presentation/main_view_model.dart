@@ -38,7 +38,8 @@ class MainViewModelImpl extends ViewModel implements MainViewModel {
       description: "Description 1",
     );
     await calendarManager.createCalendar(calendar);
-    await calendarManager.createOrUpdateEvent(event);
+    await calendarManager.deleteAllEventsByCalendarId(calendar.id);
+    await calendarManager.createEvents([event]);
     isLoading = false;
     notifyListeners();
   }
