@@ -19,13 +19,13 @@ class CalendarManager {
 
   Future<void> createCalendar(Calendar calendar) async {
     assert(calendar != null);
-    await _invokeMethod('createCalender', calendar);
+    await _invokeMethod('createCalendar', {"calendar": jsonEncode(calendar)});
   }
 
-  Future<T> _invokeMethod<T>(String method, dynamic args) async {
+  Future<T> _invokeMethod<T>(String method, Map<String, dynamic> args) async {
     print('invokeMethod: $method, $args');
     try {
-      final result = await _channel.invokeMethod(method, jsonEncode(args));
+      final result = await _channel.invokeMethod(method, args);
       print("result: $result");
       return result;
     } catch (ex) {
@@ -36,12 +36,13 @@ class CalendarManager {
 
   Future<void> deleteAllEventsByCalendarId(String calendarId) async {
     assert(calendarId != null);
-    await _invokeMethod("deleteAllEventsByCalendarId", calendarId);
+    await _invokeMethod(
+        "deleteAllEventsByCalendarId", {"calendarId": calendarId});
   }
 
   Future<void> createEvents(Iterable<Event> events) async {
     assert(events != null);
     assert(events.isNotEmpty);
-    await _invokeMethod("createEvents", events);
+    await _invokeMethod("createEvents", {"events": jsonEncode(events)});
   }
 }

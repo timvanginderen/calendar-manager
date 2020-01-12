@@ -1,6 +1,5 @@
 package be.rmdy.calendar_manager
 
-import android.os.Handler
 import android.os.Looper
 import androidx.annotation.NonNull
 import be.rmdy.calendar_manager.exceptions.CalendarManagerException
@@ -19,7 +18,6 @@ import kotlinx.coroutines.*
 import kotlinx.serialization.internal.ArrayListSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonConfiguration
-import kotlinx.serialization.serializer
 
 class CalendarManagerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
 
@@ -78,9 +76,9 @@ class CalendarManagerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
     }
 
 
-    private suspend fun sendBackResult(result: Result, call:MethodCall) {
+    private suspend fun sendBackResult(result: Result, call: MethodCall) {
         try {
-            result.success(handleMethod(call.method, requireNotNull(call.arguments()) { "arguments = null" }))
+            result.success(handleMethod(call.method, requireNotNull(call.arguments() as Map<String, Any?>) { "arguments = null" }))
         } catch (ex: CalendarManagerException) {
             result.error(ex.errorCode, ex.errorMessage, ex.errorDetails)
         } catch (ex: NotImplementedMethodException) {
@@ -91,19 +89,19 @@ class CalendarManagerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
     }
 
 
-    private suspend fun handleMethod(method: String, jsonArgs: String): Any? {
+    private suspend fun handleMethod(method: String, jsonArgs: Map<String, Any?>): Any? {
         println("handleMethod: $method")
         return when (method) {
-            "createCalender" -> {
-                val calendar = json.parse(Calendar.serializer(), jsonArgs)
+            "createCalendar" -> {
+                val calendar = json.parse(Calendar.serializer(), jsonArgs["calendar"] as String)
                 delegate.createCalendar(calendar)
             }
             "createEvents" -> {
-                val event = json.parse(ArrayListSerializer(Event.serializer()), jsonArgs)
+                val event = json.parse(ArrayListSerializer(Event.serializer()), jsonArgs["events"] as String)
                 delegate.createEvents(event)
             }
             "deleteAllEventsByCalendarId" -> {
-                val calendarId = json.parse(String.serializer(), jsonArgs)
+                val calendarId = jsonArgs["calendarId"] as String
                 delegate.deleteAllEventsByCalendarId(calendarId)
             }
             else -> {
