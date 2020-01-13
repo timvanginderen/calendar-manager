@@ -11,7 +11,6 @@ import java.util.*
 @Serializable
 class Event(
         val title: String,
-        val calendarId: String,
         val startDate: Date,
         val endDate: Date,
         val location: String?,

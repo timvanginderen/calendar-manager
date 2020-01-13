@@ -16,6 +16,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonConfiguration
 import kotlinx.serialization.serializer
 import java.util.*
+import kotlin.collections.ArrayList
 
 class CalendarManagerDelegate : CalendarApi, PluginRegistry.RequestPermissionsResultListener {
     var activity: Activity? = null
@@ -24,7 +25,8 @@ class CalendarManagerDelegate : CalendarApi, PluginRegistry.RequestPermissionsRe
 
     private val permissionService = PermissionService()
 
-    private fun createEvent(event: Event) {
+
+    private fun createEvent(event: Event, calendar: CalendarRow) {
         val cr = context!!.contentResolver
         val values = ContentValues()
         val timeZone = TimeZone.getDefault()
@@ -34,7 +36,7 @@ class CalendarManagerDelegate : CalendarApi, PluginRegistry.RequestPermissionsRe
         values.put(CalendarContract.Events.EVENT_TIMEZONE, timeZone.id)
         values.put(CalendarContract.Events.TITLE, event.title)
         values.put(CalendarContract.Events.DESCRIPTION, event.description)
-        values.put(CalendarContract.Events.CALENDAR_ID, event.calendarId)
+        values.put(CalendarContract.Events.CALENDAR_ID, calendar.id)
         val uri = cr.insert(CalendarContract.Events.CONTENT_URI, values)
         // Retrieve ID for new event
         val eventID = uri?.lastPathSegment
@@ -43,8 +45,14 @@ class CalendarManagerDelegate : CalendarApi, PluginRegistry.RequestPermissionsRe
 
     private fun ok(): String = json.stringify(String.serializer(), "ok")
 
+    fun fetchCalendars(): List<CalendarRow> {
+        val calendars = ArrayList<CalendarRow>()
+
+    }
+
     override suspend fun createEvents(events: List<Event>): String? {
         requestPermissionsIfNeeded()
+
         events.forEach {
             createEvent(it)
         }
@@ -105,4 +113,10 @@ class CalendarManagerDelegate : CalendarApi, PluginRegistry.RequestPermissionsRe
     companion object {
         private const val TAG = "CalendarManagerDelegate"
     }
+}
+
+data class CalendarRow(val id: String, val name: String)
+
+fun Calendar.isSameAs(calendar: CalendarRow): Boolean {
+    return calendar.name == name
 }

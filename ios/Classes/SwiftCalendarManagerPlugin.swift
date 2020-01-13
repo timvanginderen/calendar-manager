@@ -2,12 +2,18 @@ import Flutter
 import UIKit
 import EventKit
 
-
-public struct CalendarData: Codable {
-    let name: String
+public struct CreateCalendar : Codable {
+    let name:String
 }
 
-public struct EventData: Codable {
+public struct CalendarResult : Codable {
+    let id:String
+    let name:String
+    let readOnly:Bool
+}
+
+public struct Event: Codable {
+    let calendarId: String
     let title: String
     let description: String?
     let startDate: Int64
@@ -15,22 +21,14 @@ public struct EventData: Codable {
     let location: String?
 }
 
-
-extension Int64 {
-    func asDate() -> Date {
-        return Date (timeIntervalSince1970: Double(self) / 1000.0)
-    }
+protocol CalendarApi {
+    func requestPermissions() throws
+    func findAllCalendars() throws
+    func createEvent(event: Event) throws
+    func createCalendar(calendar: CreateCalendar) throws
+    func deleteAllEventsByCalendarId(calendarId:String) throws
 }
 
-extension Date {
-    func plusYear(year:Int) -> Date {
-        var dateComponent = DateComponents()
-        
-        dateComponent.year = year
-        
-        return Calendar.current.date(byAdding: dateComponent, to: self)!
-    }
-}
 
 public class SwiftCalendarManagerPlugin: NSObject, FlutterPlugin {
     let json = Json()
@@ -41,18 +39,21 @@ public class SwiftCalendarManagerPlugin: NSObject, FlutterPlugin {
     }
     
     func handleMethod(method:String, result:CalendarManagerResult, jsonArgs: Dictionary<String, AnyObject>) throws {
-        let delegate = CalendarManagerDelegate(result: result)
+        let api = CalendarManagerDelegate(result: result)
         switch method {
-        case "createEvents":
-            let events = try json.parse(Array<EventData>.self, from: jsonArgs["events"] as! String)
-            let calendar = try json.parse(CalendarData.self, from: jsonArgs["calendar"] as! String)
-            try delegate.createEvents(calendar: calendar, events: events)
+        case "requestPermissions":
+            try api.requestPermissions()
+        case "findAllCalendars":
+            try api.findAllCalendars()
+        case "createEvent":
+            let event = try json.parse(Event.self, from: jsonArgs["event"] as! String)
+            try api.createEvent(event: event)
         case "createCalendar":
-            let calendar = try json.parse(CalendarData.self, from: jsonArgs["calendar"] as! String)
-            try delegate.createCalendar(calendar: calendar)
+            let calendar = try json.parse(CreateCalendar.self, from: jsonArgs["calendar"] as! String)
+            try api.createCalendar(calendar: calendar)
         case "deleteAllEventsByCalendarId":
-            let calendar = try json.parse(CalendarData.self, from: jsonArgs["calendar"] as! String)
-            try delegate.deleteAllEventsByCalendar(calendar: calendar)
+            let calendarId = jsonArgs["calendarId"] as! String
+            try api.deleteAllEventsByCalendarId(calendarId: calendarId)
         default:
             result.notImplemented()
         }
@@ -71,7 +72,6 @@ public struct ErrorCodes {
     static let PERMISSIONS_NOT_GRANTED = "PERMISSIONS_NOT_GRANTED"
     static let CALENDAR_READ_ONLY = "CALENDAR_READ_ONLY"
     static let CALENDAR_NOT_FOUND = "CALENDAR_NOT_FOUND"
-    static let CALENDAR_MULTIPLE_MATCHES = "CALENDAR_MULTIPLE_MATCHES"
 }
 
 public class Json {
@@ -143,17 +143,11 @@ public class CalendarManagerResult {
     }
 }
 
-protocol CalendarApi {
-    func createCalendar(calendar: CalendarData) throws
-    func createEvents(calendar: CalendarData, events: Array<EventData>) throws
-    func deleteAllEventsByCalendar(calendar:CalendarData) throws
-    
-}
 
-extension CalendarData {
+extension EKCalendar {
     
-    func isSameAs(_ cal:EKCalendar)->Bool {
-        return self.name == cal.title
+    func toCalendarResult() -> CalendarResult {
+        return CalendarResult(id: calendarIdentifier, name: title, readOnly: !allowsContentModifications)
     }
 }
 
@@ -166,45 +160,66 @@ public class CalendarManagerDelegate : CalendarApi {
         self.result = result
     }
     
-    public func findCalendarOrThrow(calendar:CalendarData) throws -> EKCalendar {
-        let ekCalendar = try self.findCalendar(calendar: calendar)
-        if(ekCalendar == nil) {
-            throw errorCalendarNotFound(calendar: calendar)
-        }
-        return ekCalendar!
-    }
-    
-    public func findCalendar(calendar:CalendarData) throws -> EKCalendar? {
-        let results = self.eventStore.calendars(for: .event).filter({ (cal) -> Bool in
-            calendar.isSameAs(cal)
+    func requestPermissions() throws {
+        return requestPermissions({ (granted) in
+              self.result.success(granted)
         })
-        if(results.isEmpty) {
-            return nil
-        }
-        if(results.count == 1) {
-            return results.first
-        }
-        throw CalendarManagerError(code: ErrorCodes.CALENDAR_MULTIPLE_MATCHES, message: "Multiple matches (\(results.count)) found for calendar: \(calendar)", details: results)
     }
-    
-    
-    public func createCalendar(calendar: CalendarData) throws {
-        withPermissions {
-            let ekCalendar = try self.findCalendar(calendar: calendar)
-            if(ekCalendar == nil) {
-                let ekCalendar = EKCalendar(for: .event,
-                                            eventStore: self.eventStore)
-                
-                ekCalendar.title = calendar.name
-                ekCalendar.source = self.eventStore.defaultCalendarForNewEvents?.source
-                
-                try self.eventStore.saveCalendar(ekCalendar, commit: true)
-            }
-            self.success()
+    func findAllCalendars() throws {
+        try throwIfUnauthorized()
+        let results = self.eventStore.calendars(for: .event).map { (cal) in
+            cal.toCalendarResult()
         }
+        result.success(results)
     }
-    private func createEvent(ekCalendar:EKCalendar, event:EventData) throws {
+    public func createCalendar(calendar: CreateCalendar) throws {
+        try throwIfUnauthorized()
+        let ekCalendar = EKCalendar(for: .event,
+                                    eventStore: self.eventStore)
+        ekCalendar.title = calendar.name
+        ekCalendar.source = self.eventStore.defaultCalendarForNewEvents?.source
         
+        try self.eventStore.saveCalendar(ekCalendar, commit: true)
+        self.finishWithSuccess()
+    }
+    func createEvent(event: Event) throws {
+        try throwIfUnauthorized()
+        let ekCalendar = eventStore.calendar(withIdentifier: event.calendarId)
+        if(ekCalendar == nil) {
+            throw errorCalendarNotFound(calendarId: event.calendarId)
+        }
+        try createEvent(ekCalendar: ekCalendar!, event: event)
+        finishWithSuccess()
+    }
+    
+    public func deleteAllEventsByCalendarId(calendarId:String) throws{
+        try throwIfUnauthorized()
+        let ekCalendar = try findWriteableCalendarOrThrow(calendarId: calendarId)
+        let predicate = self.eventStore.predicateForEvents(
+            withStart: Date(timeIntervalSince1970: 0),
+            end: Date().plusYear(year: 100),
+            calendars: [ekCalendar])
+        let events = self.eventStore.events(matching: predicate)
+        for event in events {
+            try self.eventStore.remove(event, span: EKSpan.thisEvent, commit: false)
+        }
+        try self.eventStore.commit()
+        self.finishWithSuccess()
+    }
+    
+    public func findWriteableCalendarOrThrow(calendarId:String) throws -> EKCalendar {
+        let ekCalendar = eventStore.calendar(withIdentifier: calendarId)
+        if(ekCalendar == nil) {
+            throw errorCalendarNotFound(calendarId: calendarId)
+        }
+        let cal = ekCalendar!
+        if(!cal.allowsContentModifications) {
+            throw errorCalendarReadOnly(calendar: cal)
+        }
+        return cal
+    }
+    
+    private func createEvent(ekCalendar:EKCalendar, event:Event) throws {
         let ekEvent:EKEvent = EKEvent(eventStore: eventStore)
         
         ekEvent.title = event.title
@@ -213,41 +228,17 @@ public class CalendarManagerDelegate : CalendarApi {
         ekEvent.notes = event.description
         ekEvent.location = event.location
         ekEvent.calendar = ekCalendar
-        try self.eventStore.save(ekEvent, span: EKSpan.thisEvent, commit: false)
+        try self.eventStore.save(ekEvent, span: EKSpan.thisEvent, commit: true)
     }
-    public func createEvents(calendar:CalendarData, events: Array<EventData>) throws {
-        withPermissions {
-            let ekCalendar = try self.findCalendarOrThrow(calendar: calendar)
-            for event in events {
-                try self.createEvent(ekCalendar: ekCalendar, event: event)
-            }
-            try self.eventStore.commit()
-            
-            self.success()
-        }
-    }
+
+   
     
-    public func deleteAllEventsByCalendar(calendar:CalendarData) throws{
-        withPermissions {
-            let ekCalendar = try self.findCalendarOrThrow(calendar: calendar)
-            let predicate = self.eventStore.predicateForEvents(
-                withStart: Date(timeIntervalSince1970: 0),
-                end: Date().plusYear(year: 100),
-                calendars: [ekCalendar])
-            let events = self.eventStore.events(matching: predicate)
-            for event in events {
-                try self.eventStore.remove(event, span: EKSpan.thisEvent, commit: false)
-            }
-            try self.eventStore.commit()
-            self.success()
-        }
-    }
-    private func success() {
+    private func finishWithSuccess() {
         let x:String? = nil
         self.result.success(x)
     }
     
-    private func success<T>(_ successObj:T?) where T : Encodable {
+    private func finishWithSuccess<T>(_ successObj:T?) where T : Encodable {
         if(successObj == nil) {
             self.result.success(successObj)
         } else {
@@ -262,22 +253,13 @@ public class CalendarManagerDelegate : CalendarApi {
     }
     
     
-    private func withPermissions(permissionsGrantedAction: @escaping () throws -> Void) {
-        if hasPermissions() {
-            catchErrors(action: permissionsGrantedAction)
-            return
-        } else {
-            requestPermissions { (granted) in
-                if(!granted) {
-                    self.result.error(errorUnauthorized())
-                } else {
-                    self.catchErrors(action: permissionsGrantedAction)
-                }
-            }
+    private func throwIfUnauthorized() throws {
+        if !hasPermissions() {
+           throw errorUnauthorized()
         }
     }
     
-    private func requestPermissions(completion: @escaping (Bool) -> Void) {
+    private func requestPermissions(_ completion: @escaping (Bool) -> Void) {
         if hasPermissions() {
             completion(true)
             return
@@ -305,11 +287,26 @@ func errorUnauthorized() -> CalendarManagerError {
     return CalendarManagerError(code: ErrorCodes.PERMISSIONS_NOT_GRANTED, message: "Permissions not granted", details: nil)
 }
 
-func errorCalendarNotFound(calendar: CalendarData)-> CalendarManagerError {
-    return CalendarManagerError(code: ErrorCodes.CALENDAR_NOT_FOUND, message: "Calendar not found: \(calendar)", details: calendar)
+func errorCalendarNotFound(calendarId: String)-> CalendarManagerError {
+    return CalendarManagerError(code: ErrorCodes.CALENDAR_NOT_FOUND, message: "Calendar with identifier not found: \(calendarId)", details: calendarId)
 }
 
 func errorCalendarReadOnly(calendar: EKCalendar)-> CalendarManagerError {
     return CalendarManagerError(code: ErrorCodes.CALENDAR_READ_ONLY, message: "Trying to write to read only calendar: \(calendar)", details: calendar)
 }
 
+extension Int64 {
+    func asDate() -> Date {
+        return Date (timeIntervalSince1970: Double(self) / 1000.0)
+    }
+}
+
+extension Date {
+    func plusYear(year:Int) -> Date {
+        var dateComponent = DateComponents()
+        
+        dateComponent.year = year
+        
+        return Calendar.current.date(byAdding: dateComponent, to: self)!
+    }
+}
