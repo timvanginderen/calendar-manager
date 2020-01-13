@@ -34,20 +34,18 @@ class MainViewModelImpl extends ViewModel implements MainViewModel {
   Future<void> load() async {
     isLoading = true;
     notifyListeners();
-    final calendar =
-        const Calendar(id: TEST_CALENDAR_ID, name: "Calendar Example");
+    final calendar = const Calendar(name: "Calendar Example");
 
     final event = Event(
       title: "Event 1",
       startDate: DateTime.now().add(Duration(hours: 1)),
       endDate: DateTime.now().add(Duration(hours: 2)),
-      calendarId: calendar.id,
       location: "New York",
       description: "Description 1",
     );
     await calendarManager.createCalendar(calendar);
-    await calendarManager.deleteAllEventsByCalendarId(calendar.id);
-    await calendarManager.createEvents([event]);
+    await calendarManager.deleteAllEventsByCalendar(calendar);
+    await calendarManager.createEvents(calendar, [event]);
     isLoading = false;
     notifyListeners();
   }

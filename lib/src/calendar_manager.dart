@@ -34,15 +34,16 @@ class CalendarManager {
     }
   }
 
-  Future<void> deleteAllEventsByCalendarId(String calendarId) async {
-    assert(calendarId != null);
-    await _invokeMethod(
-        "deleteAllEventsByCalendarId", {"calendarId": calendarId});
+  Future<void> deleteAllEventsByCalendar(Calendar calendar) async {
+    assert(calendar != null);
+    await _invokeMethod("deleteAllEventsByCalendarId", {"calendar": calendar});
   }
 
-  Future<void> createEvents(Iterable<Event> events) async {
+  Future<void> createEvents(Calendar calendar, Iterable<Event> events) async {
+    assert(calendar != null);
     assert(events != null);
     assert(events.isNotEmpty);
-    await _invokeMethod("createEvents", {"events": jsonEncode(events)});
+    await _invokeMethod("createEvents",
+        {"calendar": jsonEncode(calendar), "events": jsonEncode(events)});
   }
 }

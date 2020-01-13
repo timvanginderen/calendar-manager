@@ -2,13 +2,12 @@ import Flutter
 import UIKit
 import EventKit
 
-public struct Calendar: Codable {
-    let id: String
+
+public struct CalendarData: Codable {
     let name: String
 }
 
-public struct Event: Codable {
-    let calendarId: String
+public struct EventData: Codable {
     let title: String
     let description: String?
     let startDate: Int64
@@ -16,6 +15,22 @@ public struct Event: Codable {
     let location: String?
 }
 
+
+extension Int64 {
+    func asDate() -> Date {
+        return Date (timeIntervalSince1970: Double(self) / 1000.0)
+    }
+}
+
+extension Date {
+    func plusYear(year:Int) -> Date {
+        var dateComponent = DateComponents()
+        
+        dateComponent.year = year
+        
+        return Calendar.current.date(byAdding: dateComponent, to: self)!
+    }
+}
 
 public class SwiftCalendarManagerPlugin: NSObject, FlutterPlugin {
     let json = Json()
@@ -29,14 +44,15 @@ public class SwiftCalendarManagerPlugin: NSObject, FlutterPlugin {
         let delegate = CalendarManagerDelegate(result: result)
         switch method {
         case "createEvents":
-            let events = try json.parse(Array<Event>.self, from: jsonArgs["events"] as! String)
-            try delegate.createEvents(events: events)
+            let events = try json.parse(Array<EventData>.self, from: jsonArgs["events"] as! String)
+            let calendar = try json.parse(CalendarData.self, from: jsonArgs["calendar"] as! String)
+            try delegate.createEvents(calendar: calendar, events: events)
         case "createCalendar":
-            let calendar = try json.parse(Calendar.self, from: jsonArgs["calendar"] as! String)
+            let calendar = try json.parse(CalendarData.self, from: jsonArgs["calendar"] as! String)
             try delegate.createCalendar(calendar: calendar)
         case "deleteAllEventsByCalendarId":
-            let calendarId = jsonArgs["calendarId"] as! String
-            try delegate.deleteAllEventsByCalendarId(calendarId: calendarId)
+            let calendar = try json.parse(CalendarData.self, from: jsonArgs["calendar"] as! String)
+            try delegate.deleteAllEventsByCalendar(calendar: calendar)
         default:
             result.notImplemented()
         }
@@ -55,6 +71,7 @@ public struct ErrorCodes {
     static let PERMISSIONS_NOT_GRANTED = "PERMISSIONS_NOT_GRANTED"
     static let CALENDAR_READ_ONLY = "CALENDAR_READ_ONLY"
     static let CALENDAR_NOT_FOUND = "CALENDAR_NOT_FOUND"
+    static let CALENDAR_MULTIPLE_MATCHES = "CALENDAR_MULTIPLE_MATCHES"
 }
 
 public class Json {
@@ -71,11 +88,11 @@ public class Json {
         }
         
         if(value is String) {
-            return "\"\(value.unsafelyUnwrapped)\""
+            return "\"\(value!)\""
         } else if(value is Int) {
-            return String(value.unsafelyUnwrapped as! Int)
+            return String(value! as! Int)
         }
-        let data = try encoder.encode(value.unsafelyUnwrapped)
+        let data = try encoder.encode(value!)
         return String(data: data, encoding: .utf8)
     }
 }
@@ -127,10 +144,17 @@ public class CalendarManagerResult {
 }
 
 protocol CalendarApi {
-    func createCalendar(calendar: Calendar) throws
-    func createEvents(events: Array<Event>) throws
-    func deleteAllEventsByCalendarId(calendarId:String) throws
+    func createCalendar(calendar: CalendarData) throws
+    func createEvents(calendar: CalendarData, events: Array<EventData>) throws
+    func deleteAllEventsByCalendar(calendar:CalendarData) throws
     
+}
+
+extension CalendarData {
+    
+    func isSameAs(_ cal:EKCalendar)->Bool {
+        return self.name == cal.title
+    }
 }
 
 public class CalendarManagerDelegate : CalendarApi {
@@ -142,21 +166,85 @@ public class CalendarManagerDelegate : CalendarApi {
         self.result = result
     }
     
-    public func createCalendar(calendar: Calendar) throws {
+    public func findCalendarOrThrow(calendar:CalendarData) throws -> EKCalendar {
+        let ekCalendar = try self.findCalendar(calendar: calendar)
+        if(ekCalendar == nil) {
+            throw errorCalendarNotFound(calendar: calendar)
+        }
+        return ekCalendar!
+    }
+    
+    public func findCalendar(calendar:CalendarData) throws -> EKCalendar? {
+        let results = self.eventStore.calendars(for: .event).filter({ (cal) -> Bool in
+            calendar.isSameAs(cal)
+        })
+        if(results.isEmpty) {
+            return nil
+        }
+        if(results.count == 1) {
+            return results.first
+        }
+        throw CalendarManagerError(code: ErrorCodes.CALENDAR_MULTIPLE_MATCHES, message: "Multiple matches (\(results.count)) found for calendar: \(calendar)", details: results)
+    }
+    
+    
+    public func createCalendar(calendar: CalendarData) throws {
         withPermissions {
-            self.success("ok 1")
+            let ekCalendar = try self.findCalendar(calendar: calendar)
+            if(ekCalendar == nil) {
+                let ekCalendar = EKCalendar(for: .event,
+                                            eventStore: self.eventStore)
+                
+                ekCalendar.title = calendar.name
+                ekCalendar.source = self.eventStore.defaultCalendarForNewEvents?.source
+                
+                try self.eventStore.saveCalendar(ekCalendar, commit: true)
+            }
+            self.success()
         }
     }
-    public func createEvents(events: Array<Event>) throws {
+    private func createEvent(ekCalendar:EKCalendar, event:EventData) throws {
+        
+        let ekEvent:EKEvent = EKEvent(eventStore: eventStore)
+        
+        ekEvent.title = event.title
+        ekEvent.startDate = event.startDate.asDate()
+        ekEvent.endDate = event.endDate.asDate()
+        ekEvent.notes = event.description
+        ekEvent.location = event.location
+        ekEvent.calendar = ekCalendar
+        try self.eventStore.save(ekEvent, span: EKSpan.thisEvent, commit: false)
+    }
+    public func createEvents(calendar:CalendarData, events: Array<EventData>) throws {
         withPermissions {
-            self.success("ok 2")
+            let ekCalendar = try self.findCalendarOrThrow(calendar: calendar)
+            for event in events {
+                try self.createEvent(ekCalendar: ekCalendar, event: event)
+            }
+            try self.eventStore.commit()
+            
+            self.success()
         }
     }
     
-    public func deleteAllEventsByCalendarId(calendarId:String) throws{
+    public func deleteAllEventsByCalendar(calendar:CalendarData) throws{
         withPermissions {
-            self.success("ok 3")
+            let ekCalendar = try self.findCalendarOrThrow(calendar: calendar)
+            let predicate = self.eventStore.predicateForEvents(
+                withStart: Date(timeIntervalSince1970: 0),
+                end: Date().plusYear(year: 100),
+                calendars: [ekCalendar])
+            let events = self.eventStore.events(matching: predicate)
+            for event in events {
+                try self.eventStore.remove(event, span: EKSpan.thisEvent, commit: false)
+            }
+            try self.eventStore.commit()
+            self.success()
         }
+    }
+    private func success() {
+        let x:String? = nil
+        self.result.success(x)
     }
     
     private func success<T>(_ successObj:T?) where T : Encodable {
@@ -217,11 +305,11 @@ func errorUnauthorized() -> CalendarManagerError {
     return CalendarManagerError(code: ErrorCodes.PERMISSIONS_NOT_GRANTED, message: "Permissions not granted", details: nil)
 }
 
-func errorCalendarNotFound(calendarId: String)-> CalendarManagerError {
-    return CalendarManagerError(code: ErrorCodes.CALENDAR_NOT_FOUND, message: "Calendar not found: \(calendarId)", details: calendarId)
+func errorCalendarNotFound(calendar: CalendarData)-> CalendarManagerError {
+    return CalendarManagerError(code: ErrorCodes.CALENDAR_NOT_FOUND, message: "Calendar not found: \(calendar)", details: calendar)
 }
 
-func errorCalendarManagerError(calendarId: String)-> CalendarManagerError {
-    return CalendarManagerError(code: ErrorCodes.CALENDAR_READ_ONLY, message: "Trying to write to read only calendar: \(calendarId)", details: calendarId)
+func errorCalendarReadOnly(calendar: EKCalendar)-> CalendarManagerError {
+    return CalendarManagerError(code: ErrorCodes.CALENDAR_READ_ONLY, message: "Trying to write to read only calendar: \(calendar)", details: calendar)
 }
 

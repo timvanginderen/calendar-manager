@@ -13,7 +13,7 @@ extension DateTimeExtensions on DateTime {
 void main() {
   const MethodChannel channel = MethodChannel('rmdy.be/calendar_manager');
   CalendarManager calendarManager;
-  Completer<String> paramCapture;
+  Completer<Map<String, dynamic>> paramCapture;
 
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -36,37 +36,38 @@ void main() {
 
   group('CalendarManager', () {
     test('createCalendar', () async {
-      final calendar = Calendar(id: "123", name: "Calendar 1");
+      final calendar = Calendar(name: "Calendar 1");
       await calendarManager.createCalendar(calendar);
       final param = await paramCapture.future;
-      expect(Calendar.fromJson(jsonDecode(param)), calendar);
+      expect(Calendar.fromJson(jsonDecode(param["calendar"])), calendar);
     });
 
     test('createEvents', () async {
-      final calendar = Calendar(id: "123", name: "Calendar 1");
+      final calendar = Calendar(name: "Calendar 1");
       final event = Event(
         title: "Event 1",
         startDate:
             DateTime.now().truncateMicroseconds().add(Duration(hours: 1)),
         endDate: DateTime.now().truncateMicroseconds().add(Duration(hours: 2)),
-        calendarId: calendar.id,
         location: "New York",
         description: "Description 1",
       );
       final events = [event];
-      await calendarManager.createEvents(events);
+      await calendarManager.createEvents(calendar, events);
       final param = await paramCapture.future;
-      Iterable l = json.decode(param);
+      Iterable l = json.decode(param['events']);
+      final decodedCalendar = json.decode(param['calendar']);
       final decodedEvents = l.map((x) => Event.fromJson(x)).toList();
       expect(decodedEvents, events);
+      expect(decodedCalendar, calendar);
     });
 
     test('deleteAllEventsByCalendarId', () async {
-      final calendarId = "123";
-      await calendarManager.deleteAllEventsByCalendarId(calendarId);
+      final calendar = Calendar(name: "Calendar 1");
+      await calendarManager.deleteAllEventsByCalendar(calendar);
       final param = await paramCapture.future;
-      final decodedCalendarId = jsonDecode(param);
-      expect(decodedCalendarId, calendarId);
+      final decodedCalendar = jsonDecode(param["calendar"]);
+      expect(decodedCalendar, calendar);
     });
   });
 }

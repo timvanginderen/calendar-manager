@@ -1,3 +1,4 @@
+import 'package:equatable/equatable.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
 
@@ -7,19 +8,17 @@ part 'models.g.dart';
 
 @JsonSerializable()
 @DateJsonConverter()
-class Event {
-  final String calendarId, title, description, location;
+class Event extends Equatable {
+  final String title, description, location;
   final DateTime startDate, endDate;
 
   const Event({
-    @required this.calendarId,
     @required this.title,
     @required this.startDate,
     @required this.endDate,
     this.description,
     this.location,
-  })  : assert(calendarId != null),
-        assert(title != null),
+  })  : assert(title != null),
         assert(startDate != null),
         assert(endDate != null);
 
@@ -28,58 +27,30 @@ class Event {
   Map<String, dynamic> toJson() => _$EventToJson(this);
 
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is Event &&
-          runtimeType == other.runtimeType &&
-          calendarId == other.calendarId &&
-          title == other.title &&
-          description == other.description &&
-          location == other.location &&
-          startDate == other.startDate &&
-          endDate == other.endDate;
-
-  @override
-  int get hashCode =>
-      calendarId.hashCode ^
-      title.hashCode ^
-      description.hashCode ^
-      location.hashCode ^
-      startDate.hashCode ^
-      endDate.hashCode;
-
-  @override
   String toString() {
-    return 'Event{calenderId: $calendarId, title: $title, description: $description, location: $location, startDate: $startDate, endDate: $endDate}';
+    return 'Event{title: $title, description: $description, location: $location, startDate: $startDate, endDate: $endDate}';
   }
+
+  @override
+  List<Object> get props => [title, description, location, startDate, endDate];
 }
 
 @JsonSerializable()
-class Calendar {
-  final String id, name;
+class Calendar extends Equatable {
+  final name;
 
-  const Calendar({@required this.id, @required this.name})
-      : assert(id != null),
-        assert(name != null);
+  const Calendar({@required this.name}) : assert(name != null);
 
   @override
   String toString() {
-    return 'Calendar{id: $id, name: $name}';
+    return 'Calendar{name: $name}';
   }
+
+  @override
+  List<Object> get props => [name];
 
   factory Calendar.fromJson(Map<String, dynamic> json) =>
       _$CalendarFromJson(json);
 
   Map<String, dynamic> toJson() => _$CalendarToJson(this);
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is Calendar &&
-          runtimeType == other.runtimeType &&
-          id == other.id &&
-          name == other.name;
-
-  @override
-  int get hashCode => id.hashCode ^ name.hashCode;
 }
