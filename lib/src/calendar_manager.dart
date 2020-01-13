@@ -17,9 +17,13 @@ class CalendarManager {
 
   factory CalendarManager() => _instance;
 
-  Future<void> createCalendar(Calendar calendar) async {
+  ///returns the calendarId
+  Future<String> createCalendar(CreateCalendar calendar) async {
     assert(calendar != null);
-    await _invokeMethod('createCalendar', {"calendar": jsonEncode(calendar)});
+    await requestPermissionsOrThrow();
+    final calendarId = await _invokeMethod(
+        'createCalendar', {"calendar": jsonEncode(calendar)});
+    return calendarId;
   }
 
   Future<T> _invokeMethod<T>(String method, Map<String, dynamic> args) async {
@@ -34,16 +38,45 @@ class CalendarManager {
     }
   }
 
-  Future<void> deleteAllEventsByCalendar(Calendar calendar) async {
-    assert(calendar != null);
-    await _invokeMethod("deleteAllEventsByCalendarId", {"calendar": calendar});
+  Future<void> deleteAllEventsByCalendarId(String calendarId) async {
+    assert(calendarId != null);
+    await requestPermissionsOrThrow();
+    await _invokeMethod(
+        "deleteAllEventsByCalendarId", {"calendarId": calendarId});
   }
 
-  Future<void> createEvents(Calendar calendar, Iterable<Event> events) async {
-    assert(calendar != null);
+  Future<List<CalendarResult>> findAllCalendars() async {
+    await requestPermissionsOrThrow();
+    final json = await _invokeMethod("findAllCalendars", {});
+    Iterable results = jsonDecode(json);
+    return results.map((c) => CalendarResult.fromJson(c)).toList();
+  }
+
+  Future<void> requestPermissionsOrThrow() async {
+    bool granted = await requestPermissions();
+    if (!granted) {
+      throw CalendarManagerException(
+          code: CalendarManagerErrorCode.PERMISSIONS_NOT_GRANTED);
+    }
+  }
+
+  Future<bool> requestPermissions() async {
+    bool granted = await _invokeMethod("requestPermissions", {});
+    return granted;
+  }
+
+  Future<void> createEvent(Event event) async {
+    assert(event != null);
+    await requestPermissionsOrThrow();
+    await _invokeMethod("createEvent", {"event": jsonEncode(event)});
+  }
+
+  Future<void> createEvents(Iterable<Event> events) async {
     assert(events != null);
     assert(events.isNotEmpty);
-    await _invokeMethod("createEvents",
-        {"calendar": jsonEncode(calendar), "events": jsonEncode(events)});
+    await requestPermissionsOrThrow();
+    for (final event in events) {
+      await createEvent(event);
+    }
   }
 }

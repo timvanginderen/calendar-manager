@@ -36,16 +36,17 @@ void main() {
 
   group('CalendarManager', () {
     test('createCalendar', () async {
-      final calendar = Calendar(name: "Calendar 1");
+      final calendar = CreateCalendar(name: "Calendar 1");
       await calendarManager.createCalendar(calendar);
       final param = await paramCapture.future;
-      expect(Calendar.fromJson(jsonDecode(param["calendar"])), calendar);
+      expect(CreateCalendar.fromJson(jsonDecode(param["calendar"])), calendar);
     });
 
     test('createEvents', () async {
-      final calendar = Calendar(name: "Calendar 1");
+      final calendar = CreateCalendar(name: "Calendar 1");
       final event = Event(
         title: "Event 1",
+        calendarId: "23",
         startDate:
             DateTime.now().truncateMicroseconds().add(Duration(hours: 1)),
         endDate: DateTime.now().truncateMicroseconds().add(Duration(hours: 2)),
@@ -53,7 +54,7 @@ void main() {
         description: "Description 1",
       );
       final events = [event];
-      await calendarManager.createEvents(calendar, events);
+      await calendarManager.createEvents(events);
       final param = await paramCapture.future;
       Iterable l = json.decode(param['events']);
       final decodedCalendar = json.decode(param['calendar']);
@@ -63,10 +64,10 @@ void main() {
     });
 
     test('deleteAllEventsByCalendarId', () async {
-      final calendar = Calendar(name: "Calendar 1");
-      await calendarManager.deleteAllEventsByCalendar(calendar);
+      final calendar = CreateCalendar(name: "Calendar 1");
+      await calendarManager.deleteAllEventsByCalendarId("123");
       final param = await paramCapture.future;
-      final decodedCalendar = jsonDecode(param["calendar"]);
+      final decodedCalendar = jsonDecode(param["calendarId"]);
       expect(decodedCalendar, calendar);
     });
   });

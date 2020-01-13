@@ -6,19 +6,25 @@ import 'converters/date_json_converter.dart';
 
 part 'models.g.dart';
 
-@JsonSerializable()
+abstract class _Base extends Equatable {
+  const _Base();
+}
+
+@JsonSerializable(disallowUnrecognizedKeys: true)
 @DateJsonConverter()
-class Event extends Equatable {
-  final String title, description, location;
+class Event extends _Base {
+  final String calendarId, title, description, location;
   final DateTime startDate, endDate;
 
   const Event({
+    @required this.calendarId,
     @required this.title,
     @required this.startDate,
     @required this.endDate,
     this.description,
     this.location,
-  })  : assert(title != null),
+  })  : assert(calendarId != null),
+        assert(title != null),
         assert(startDate != null),
         assert(endDate != null);
 
@@ -27,30 +33,54 @@ class Event extends Equatable {
   Map<String, dynamic> toJson() => _$EventToJson(this);
 
   @override
-  String toString() {
-    return 'Event{title: $title, description: $description, location: $location, startDate: $startDate, endDate: $endDate}';
-  }
-
-  @override
   List<Object> get props => [title, description, location, startDate, endDate];
 }
 
+@JsonSerializable(disallowUnrecognizedKeys: true)
+class CalendarResult extends _Base {
+  final String id;
+  final String name;
+  final String isReadOnly;
+
+  const CalendarResult({this.id, this.name, this.isReadOnly});
+
+  @override
+  List<Object> get props => [id, name, isReadOnly];
+
+  factory CalendarResult.fromJson(Map<String, dynamic> json) =>
+      _$CalendarResultFromJson(json);
+
+  Map<String, dynamic> toJson() => _$CalendarResultToJson(this);
+}
+
 @JsonSerializable()
-class Calendar extends Equatable {
+class CreateCalendar extends _Base {
   final name;
+  final androidInfo;
 
-  const Calendar({@required this.name}) : assert(name != null);
-
-  @override
-  String toString() {
-    return 'Calendar{name: $name}';
-  }
+  const CreateCalendar({@required this.name, this.androidInfo})
+      : assert(name != null);
 
   @override
-  List<Object> get props => [name];
+  List<Object> get props => [name, androidInfo];
 
-  factory Calendar.fromJson(Map<String, dynamic> json) =>
-      _$CalendarFromJson(json);
+  factory CreateCalendar.fromJson(Map<String, dynamic> json) =>
+      _$CreateCalendarFromJson(json);
 
-  Map<String, dynamic> toJson() => _$CalendarToJson(this);
+  Map<String, dynamic> toJson() => _$CreateCalendarToJson(this);
+}
+
+@JsonSerializable()
+class CreateCalendarAndroidInfo extends _Base {
+  final id;
+
+  const CreateCalendarAndroidInfo({@required this.id}) : assert(id != null);
+
+  @override
+  List<Object> get props => [id];
+
+  factory CreateCalendarAndroidInfo.fromJson(Map<String, dynamic> json) =>
+      _$CreateCalendarAndroidInfoFromJson(json);
+
+  Map<String, dynamic> toJson() => _$CreateCalendarAndroidInfoToJson(this);
 }

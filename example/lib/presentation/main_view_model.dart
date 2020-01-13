@@ -11,7 +11,7 @@ abstract class MainViewModel implements ViewModel {
   factory MainViewModel() => MainViewModelImpl(CalendarManager());
 }
 
-const TEST_CALENDAR_ID = '123543';
+const TEST_CALENDAR_ID = '125789654323578';
 
 class MainViewModelImpl extends ViewModel implements MainViewModel {
   @override
@@ -31,21 +31,33 @@ class MainViewModelImpl extends ViewModel implements MainViewModel {
     }
   }
 
-  Future<void> load() async {
-    isLoading = true;
-    notifyListeners();
-    final calendar = const Calendar(name: "Calendar Example");
+  Future<void> createEvents() async {
+    const calendarId = TEST_CALENDAR_ID;
+    final createCalendar = const CreateCalendar(
+        name: "Calendar Example",
+        androidInfo: const CreateCalendarAndroidInfo(id: calendarId));
 
     final event = Event(
+      calendarId: null,
       title: "Event 1",
       startDate: DateTime.now().add(Duration(hours: 1)),
       endDate: DateTime.now().add(Duration(hours: 2)),
       location: "New York",
       description: "Description 1",
     );
-    await calendarManager.createCalendar(calendar);
-    await calendarManager.deleteAllEventsByCalendar(calendar);
-    await calendarManager.createEvents(calendar, [event]);
+    final calendars = await calendarManager.findAllCalendars();
+    final calendar = calendars.firstWhere((c) => c.name == createCalendar.name,
+        orElse: () => null);
+    if (calendar == null) await calendarManager.createCalendar(createCalendar);
+    await calendarManager.createCalendar(createCalendar);
+    await calendarManager.deleteAllEventsByCalendarId(calendar.id);
+    await calendarManager.createEvent(event);
+  }
+
+  Future<void> load() async {
+    isLoading = true;
+    notifyListeners();
+    await createEvents();
     isLoading = false;
     notifyListeners();
   }
