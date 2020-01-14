@@ -8,15 +8,25 @@ import '../calendar_manager.dart';
 
 export 'package:calendar_manager/src/models.dart';
 
-class CalendarManager {
+abstract class CalendarManager {
+  Future<CalendarResult> createCalendar(CreateCalendar calendar);
+  Future<void> deleteCalendar(String calendarId);
+  Future<List<CalendarResult>> findAllCalendars();
+  Future<void> createEvent(Event event);
+  Future<void> createEvents(Iterable<Event> events);
+  Future<bool> requestPermissions();
+  factory CalendarManager() => CalendarManagerImpl();
+}
+
+class CalendarManagerImpl implements CalendarManager {
   static const MethodChannel _channel =
       const MethodChannel('rmdy.be/calendar_manager');
 
-  static final CalendarManager _instance = CalendarManager._();
+  static final CalendarManager _instance = CalendarManagerImpl._();
 
-  CalendarManager._();
+  CalendarManagerImpl._();
 
-  factory CalendarManager() => _instance;
+  factory CalendarManagerImpl() => _instance;
 
   ///returns the calendarId
   Future<CalendarResult> createCalendar(CreateCalendar calendar) async {
