@@ -16,8 +16,8 @@ class PermissionService : PluginRegistry.RequestPermissionsResultListener {
     }
 
 
-     fun hasPermissions(activity: Activity, permissions: List<String>):Boolean {
-        val notGrantedPermissions =  permissions.filter {
+    fun hasPermissions(activity: Activity, permissions: List<String>): Boolean {
+        val notGrantedPermissions = permissions.filter {
             ContextCompat.checkSelfPermission(activity, it) != PackageManager.PERMISSION_GRANTED
         }
         return notGrantedPermissions.isEmpty()
@@ -42,7 +42,7 @@ class PermissionService : PluginRegistry.RequestPermissionsResultListener {
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray): Boolean {
-        Log.d(TAG,"onRequestPermissionsResult: $requestCode, $permissions, $grantResults")
+        Log.d(TAG, "onRequestPermissionsResult: $requestCode, $permissions, $grantResults")
         return when (requestCode) {
             REQUEST_CODE -> {
                 val granted = grantResults.all { it == PackageManager.PERMISSION_GRANTED }

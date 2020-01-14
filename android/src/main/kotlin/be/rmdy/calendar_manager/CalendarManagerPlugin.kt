@@ -94,11 +94,11 @@ class CalendarManagerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
         }
     }
 
-    private fun Result.error(error:CalendarManagerException) {
+    private fun Result.error(error: CalendarManagerException) {
         error(error.code.name, error.message, error.details)
     }
 
-    private fun Exception.toCalendarManagerException():CalendarManagerException {
+    private fun Exception.toCalendarManagerException(): CalendarManagerException {
         return CalendarManagerException(ErrorCode.UNKNOWN, message, this::class)
     }
 

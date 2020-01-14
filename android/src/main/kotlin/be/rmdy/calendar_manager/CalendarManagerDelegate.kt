@@ -30,17 +30,19 @@ class CalendarManagerDelegate : CalendarApi, PluginRegistry.RequestPermissionsRe
         val projection = arrayOf(
                 Calendars._ID,
                 Calendars.CALENDAR_DISPLAY_NAME,
-                Calendars.CALENDAR_ACCESS_LEVEL)
+                Calendars.CALENDAR_ACCESS_LEVEL,
+                Calendars.CALENDAR_COLOR)
         val uri = Uri.parse("content://com.android.calendar/calendars")
         val results = ArrayList<CalendarResult>()
         val contentResolver = context!!.contentResolver
         val managedCursor = contentResolver.query(uri, projection, null, null, null)
         managedCursor?.use { cursor ->
             while (cursor.moveToNext()) {
-                val id = cursor.getStringByName(Calendars._ID);
+                val id = cursor.getStringByName(Calendars._ID)
                 val name = cursor.getStringByName(Calendars.CALENDAR_DISPLAY_NAME)
                 val accessLevel = cursor.getIntByName(Calendars.CALENDAR_ACCESS_LEVEL)
-                val calendar = CalendarResult(id = id, name = name, isReadOnly = accessLevel <= Calendars.CAL_ACCESS_READ)
+                val color = cursor.getIntByName(Calendars.CALENDAR_COLOR)
+                val calendar = CalendarResult(id = id, name = name, color = color, isReadOnly = accessLevel <= Calendars.CAL_ACCESS_READ)
                 results += calendar
             }
         }
@@ -48,7 +50,6 @@ class CalendarManagerDelegate : CalendarApi, PluginRegistry.RequestPermissionsRe
         return results
 
     }
-
 
 
     override suspend fun createEvent(event: Event) {
@@ -94,22 +95,24 @@ class CalendarManagerDelegate : CalendarApi, PluginRegistry.RequestPermissionsRe
         } else {
             Log.d(TAG, "Calendar found with id: " + calendar.id)
         }
-        return CalendarResult(id = calendar.id, isReadOnly = false, name = calendar.name)
+        return CalendarResult(id = calendar.id, color = calendar.color, isReadOnly = false, name = calendar.name)
     }
+
     override suspend fun deleteCalendar(calendarId: String) {
         validateCalendarId(calendarId)
-        val calendar =  findCalendarByIdOrThrow(calendarId, requireWritable = false)
+        val calendar = findCalendarByIdOrThrow(calendarId, requireWritable = false)
         val cr = context!!.contentResolver
-        val uri= asSyncAdapter(ContentUris.withAppendedId(Calendars.CONTENT_URI, calendarId.toLong()),
+        val uri = asSyncAdapter(ContentUris.withAppendedId(Calendars.CONTENT_URI, calendarId.toLong()),
                 calendar.name, CalendarContract.ACCOUNT_TYPE_LOCAL)
         val rows = cr.delete(uri, null, null)
         Log.d(TAG, "deleteCalendar: $rows")
     }
+
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray): Boolean {
         return permissionService.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
 
-    private fun String.isNumbersOnly()= this.all { it.isDigit() }
+    private fun String.isNumbersOnly() = this.all { it.isDigit() }
 
     private fun validateCalendarId(calendarId: String) {
         require(calendarId.isNotEmpty()) {
@@ -119,7 +122,6 @@ class CalendarManagerDelegate : CalendarApi, PluginRegistry.RequestPermissionsRe
             "calendarId ($calendarId) must be a number"
         }
     }
-
 
 
     private fun asSyncAdapter(uri: Uri, account: String, accountType: String): Uri {

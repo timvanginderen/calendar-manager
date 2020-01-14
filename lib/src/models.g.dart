@@ -35,10 +35,11 @@ Map<String, dynamic> _$EventToJson(Event instance) => <String, dynamic>{
     };
 
 CalendarResult _$CalendarResultFromJson(Map<String, dynamic> json) {
-  $checkKeys(json, allowedKeys: const ['id', 'name', 'isReadOnly']);
+  $checkKeys(json, allowedKeys: const ['id', 'name', 'color', 'isReadOnly']);
   return CalendarResult(
     id: json['id'] as String,
     name: json['name'] as String,
+    color: json['color'] as int,
     isReadOnly: json['isReadOnly'] as bool,
   );
 }
@@ -47,26 +48,32 @@ Map<String, dynamic> _$CalendarResultToJson(CalendarResult instance) =>
     <String, dynamic>{
       'id': instance.id,
       'name': instance.name,
+      'color': instance.color,
       'isReadOnly': instance.isReadOnly,
     };
 
 CreateCalendar _$CreateCalendarFromJson(Map<String, dynamic> json) {
   return CreateCalendar(
-    name: json['name'],
-    androidInfo: json['androidInfo'],
+    name: json['name'] as String,
+    color: json['color'] as int,
+    androidInfo: json['androidInfo'] == null
+        ? null
+        : CreateCalendarAndroidInfo.fromJson(
+            json['androidInfo'] as Map<String, dynamic>),
   );
 }
 
 Map<String, dynamic> _$CreateCalendarToJson(CreateCalendar instance) =>
     <String, dynamic>{
       'name': instance.name,
+      'color': instance.color,
       'androidInfo': instance.androidInfo,
     };
 
 CreateCalendarAndroidInfo _$CreateCalendarAndroidInfoFromJson(
     Map<String, dynamic> json) {
   return CreateCalendarAndroidInfo(
-    id: json['id'],
+    id: json['id'] as String,
   );
 }
 

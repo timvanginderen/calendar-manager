@@ -1,4 +1,5 @@
 @file:UseSerializers(DateSerializer::class)
+
 package be.rmdy.calendar_manager.models
 
 import be.rmdy.calendar_manager.serializers.DateSerializer
@@ -7,10 +8,9 @@ import kotlinx.serialization.UseSerializers
 import java.util.*
 
 
-
 @Serializable
 data class Event(
-        val calendarId:String,
+        val calendarId: String,
         val title: String,
         val startDate: Date,
         val endDate: Date,
@@ -20,14 +20,16 @@ data class Event(
 
 @Serializable
 data class CalendarResult(val id: String,
-                     val name: String,
-                     val isReadOnly:Boolean)
+                          val name: String,
+                          val color: Int?,
+                          val isReadOnly: Boolean)
 
 @Serializable
 data class CreateCalendar(val name: String,
-                     val androidInfo: CreateCalendarAndroidInfo) {
-    val id get()= androidInfo.id
+                          val color: Int?,
+                          val androidInfo: CreateCalendarAndroidInfo) {
+    val id get() = androidInfo.id
 }
 
 @Serializable
-data class CreateCalendarAndroidInfo(val id:String)
+data class CreateCalendarAndroidInfo(val id: String)

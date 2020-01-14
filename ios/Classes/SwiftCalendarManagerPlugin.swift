@@ -4,11 +4,13 @@ import EventKit
 
 public struct CreateCalendar : Codable {
     let name:String
+    let color:Int32?
 }
 
 public struct CalendarResult : Codable {
     let id:String
     let name:String
+    let color:Int32?
     let isReadOnly:Bool
 }
 
@@ -153,11 +155,50 @@ public class CalendarManagerResult {
     }
 }
 
+extension UIColor {
+    func rgb() -> Int32? {
+        var fRed : CGFloat = 0
+        var fGreen : CGFloat = 0
+        var fBlue : CGFloat = 0
+        var fAlpha: CGFloat = 0
+        if self.getRed(&fRed, green: &fGreen, blue: &fBlue, alpha: &fAlpha) {
+            let iRed = Int(fRed * 255.0)
+            let iGreen = Int(fGreen * 255.0)
+            let iBlue = Int(fBlue * 255.0)
+            let iAlpha = Int(fAlpha * 255.0)
+            
+            //  (Bits 24-31 are alpha, 16-23 are red, 8-15 are green, 0-7 are blue).
+            let rgb = (iAlpha << 24) + (iRed << 16) + (iGreen << 8) + iBlue
+            return Int32(rgb)
+        } else {
+            // Could not extract RGBA components:
+            return nil
+        }
+    }
+}
+
+extension CGColor {
+    func toInt() -> Int32? {
+        return UIColor(cgColor: self).rgb()
+    }
+}
+
+extension Int32 {
+    
+    func toCgColor() -> CGColor {
+        var bytes = withUnsafeBytes(of: bigEndian) { Array($0) }
+        let alpha = CGFloat(bytes[0]/255)
+        let red = CGFloat(bytes[1]/255)
+        let green = CGFloat(bytes[2]/255)
+        let blue = CGFloat(bytes[3]/255)
+        return UIColor(red: red, green: green, blue: blue, alpha: alpha).cgColor
+    }
+}
 
 extension EKCalendar {
     
     func toCalendarResult() -> CalendarResult {
-        return CalendarResult(id: calendarIdentifier, name: title, isReadOnly: !allowsContentModifications)
+        return CalendarResult(id: calendarIdentifier, name: title, color: cgColor?.toInt(), isReadOnly: !allowsContentModifications)
     }
 }
 
@@ -187,6 +228,7 @@ public class CalendarManagerDelegate : CalendarApi {
         let ekCalendar = EKCalendar(for: .event,
                                     eventStore: self.eventStore)
         ekCalendar.title = calendar.name
+        ekCalendar.cgColor = calendar.color?.toCgColor()
         ekCalendar.source = self.eventStore.defaultCalendarForNewEvents?.source
         
         try self.eventStore.saveCalendar(ekCalendar, commit: true)

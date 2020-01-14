@@ -15,6 +15,7 @@ abstract class MainViewModel implements ViewModel {
 
 const TEST_CALENDAR_ID = '1257896543';
 const TEST_CALENDAR_NAME = 'DummyCalendar';
+const TEST_COLOR = 4278545308;
 
 class MainViewModelImpl extends ViewModel implements MainViewModel {
   @override
@@ -43,8 +44,11 @@ class MainViewModelImpl extends ViewModel implements MainViewModel {
   Future<void> onCreateCalendarClick() => doCall(() async {
         final createCalendar = const CreateCalendar(
             name: TEST_CALENDAR_NAME,
+            color: TEST_COLOR,
             androidInfo: const CreateCalendarAndroidInfo(id: TEST_CALENDAR_ID));
-        await calendarManager.createCalendar(createCalendar);
+        final CalendarResult calendarResult =
+            await calendarManager.createCalendar(createCalendar);
+        assert(calendarResult.color == TEST_COLOR);
       });
 
   @override

@@ -46,12 +46,13 @@ class Event extends _Base {
 class CalendarResult extends _Base {
   final String id;
   final String name;
+  final int color;
   final bool isReadOnly;
 
-  const CalendarResult({this.id, this.name, this.isReadOnly});
+  const CalendarResult({this.id, this.name, this.color, this.isReadOnly});
 
   @override
-  List<Object> get props => [id, name, isReadOnly];
+  List<Object> get props => [id, name, color, isReadOnly];
 
   factory CalendarResult.fromJson(Map<String, dynamic> json) =>
       _$CalendarResultFromJson(json);
@@ -61,14 +62,15 @@ class CalendarResult extends _Base {
 
 @JsonSerializable()
 class CreateCalendar extends _Base {
-  final name;
-  final androidInfo;
+  final String name;
+  final int color;
+  final CreateCalendarAndroidInfo androidInfo;
 
-  const CreateCalendar({@required this.name, this.androidInfo})
+  const CreateCalendar({@required this.name, this.color, this.androidInfo})
       : assert(name != null);
 
   @override
-  List<Object> get props => [name, androidInfo];
+  List<Object> get props => [name, color, androidInfo];
 
   factory CreateCalendar.fromJson(Map<String, dynamic> json) =>
       _$CreateCalendarFromJson(json);
@@ -78,7 +80,7 @@ class CreateCalendar extends _Base {
 
 @JsonSerializable()
 class CreateCalendarAndroidInfo extends _Base {
-  final id;
+  final String id;
 
   const CreateCalendarAndroidInfo({@required this.id}) : assert(id != null);
 
