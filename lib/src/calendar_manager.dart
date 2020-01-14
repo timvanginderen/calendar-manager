@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:calendar_manager/src/utils.dart';
 import 'package:flutter/services.dart';
 
 import '../calendar_manager.dart';
@@ -18,12 +19,12 @@ class CalendarManager {
   factory CalendarManager() => _instance;
 
   ///returns the calendarId
-  Future<String> createCalendar(CreateCalendar calendar) async {
+  Future<CalendarResult> createCalendar(CreateCalendar calendar) async {
     assert(calendar != null);
     await requestPermissionsOrThrow();
-    final calendarId = await _invokeMethod(
+    final String json = await _invokeMethod(
         'createCalendar', {"calendar": jsonEncode(calendar)});
-    return calendarId;
+    return CalendarResult.fromJson(jsonDecode(json));
   }
 
   Future<T> _invokeMethod<T>(String method, Map<String, dynamic> args) async {
@@ -32,22 +33,23 @@ class CalendarManager {
       final result = await _channel.invokeMethod(method, args);
       print("result: $result");
       return result;
-    } catch (ex) {
-      print(ex);
-      return null;
+    } on PlatformException catch (ex) {
+      throw CalendarManagerException(
+          code: parseCalendarManagerErrorCode(ex.code),
+          details: ex.details,
+          message: ex.message);
     }
   }
 
-  Future<void> deleteAllEventsByCalendarId(String calendarId) async {
+  Future<void> deleteCalendar(String calendarId) async {
     assert(calendarId != null);
     await requestPermissionsOrThrow();
-    await _invokeMethod(
-        "deleteAllEventsByCalendarId", {"calendarId": calendarId});
+    return await _invokeMethod("deleteCalendar", {"calendarId": calendarId});
   }
 
   Future<List<CalendarResult>> findAllCalendars() async {
     await requestPermissionsOrThrow();
-    final json = await _invokeMethod("findAllCalendars", {});
+    final String json = await _invokeMethod("findAllCalendars", {});
     Iterable results = jsonDecode(json);
     return results.map((c) => CalendarResult.fromJson(c)).toList();
   }

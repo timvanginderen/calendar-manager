@@ -8,6 +8,12 @@ part 'models.g.dart';
 
 abstract class _Base extends Equatable {
   const _Base();
+  Map<String, dynamic> toJson();
+
+  @override
+  String toString() {
+    return toJson().toString();
+  }
 }
 
 @JsonSerializable(disallowUnrecognizedKeys: true)
@@ -40,7 +46,7 @@ class Event extends _Base {
 class CalendarResult extends _Base {
   final String id;
   final String name;
-  final String isReadOnly;
+  final bool isReadOnly;
 
   const CalendarResult({this.id, this.name, this.isReadOnly});
 

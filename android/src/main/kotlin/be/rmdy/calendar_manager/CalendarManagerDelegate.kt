@@ -4,29 +4,73 @@ import android.Manifest
 import android.app.Activity
 import android.content.ContentValues
 import android.content.Context
+import android.database.Cursor
 import android.net.Uri
 import android.provider.CalendarContract
+import android.provider.CalendarContract.Calendars
 import android.util.Log
 import be.rmdy.calendar_manager.exceptions.CalendarManagerException
-import be.rmdy.calendar_manager.models.Calendar
+import be.rmdy.calendar_manager.models.CalendarResult
+import be.rmdy.calendar_manager.models.CreateCalendar
 import be.rmdy.calendar_manager.models.Event
 import be.rmdy.calendar_manager.permissions.PermissionService
 import io.flutter.plugin.common.PluginRegistry
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonConfiguration
-import kotlinx.serialization.serializer
 import java.util.*
 import kotlin.collections.ArrayList
+
 
 class CalendarManagerDelegate : CalendarApi, PluginRegistry.RequestPermissionsResultListener {
     var activity: Activity? = null
     var context: Context? = null
-    private val json = Json(JsonConfiguration.Stable)
 
     private val permissionService = PermissionService()
 
+    private fun Cursor.getStringByName(colName: String): String {
+        return getString(getColumnIndexOrThrow(colName))
+    }
 
-    private fun createEvent(event: Event, calendar: CalendarRow) {
+    private fun Cursor.getIntByName(colName: String): Int {
+        return getInt(getColumnIndexOrThrow(colName))
+    }
+
+    override suspend fun findAllCalendars(): List<CalendarResult> {
+        val projection = arrayOf(
+                Calendars._ID,
+                Calendars.CALENDAR_DISPLAY_NAME,
+                Calendars.CALENDAR_ACCESS_LEVEL)
+        val uri = Uri.parse("content://com.android.calendar/calendars")
+        val results = ArrayList<CalendarResult>()
+        val contentResolver = context!!.contentResolver
+        val managedCursor = contentResolver.query(uri, projection, null, null, null)
+        managedCursor?.use { cursor ->
+            while (cursor.moveToNext()) {
+                val id = cursor.getStringByName(Calendars._ID);
+                val name = cursor.getStringByName(Calendars.CALENDAR_DISPLAY_NAME)
+                val accessLevel = cursor.getIntByName(Calendars.CALENDAR_ACCESS_LEVEL)
+                val calendar = CalendarResult(id = id, name = name, isReadOnly = accessLevel <= Calendars.CAL_ACCESS_READ)
+                results += calendar
+            }
+        }
+
+        return results
+
+    }
+
+    private fun errorCalendarNotFound(calendarId: String) = CalendarManagerException(code = ErrorCode.CALENDAR_NOT_FOUND, message = "Calendar with id not found: $calendarId", details = calendarId)
+
+    private fun errorCalendarReadOnly(calendarResult: CalendarResult) = CalendarManagerException(code = ErrorCode.CALENDAR_READ_ONLY, message = "Calendar is read only: $calendarResult", details = calendarResult.toString())
+
+
+    private suspend fun findCalendarByIdOrThrow(calendarId: String, requireWriteable: Boolean = true): CalendarResult {
+        val calendar = findAllCalendars().find { it.id == calendarId }
+                ?: throw errorCalendarNotFound(calendarId)
+        if (requireWriteable && calendar.isReadOnly) {
+            throw errorCalendarReadOnly(calendar)
+        }
+        return calendar
+    }
+
+    override suspend fun createEvent(event: Event) {
         val cr = context!!.contentResolver
         val values = ContentValues()
         val timeZone = TimeZone.getDefault()
@@ -36,74 +80,50 @@ class CalendarManagerDelegate : CalendarApi, PluginRegistry.RequestPermissionsRe
         values.put(CalendarContract.Events.EVENT_TIMEZONE, timeZone.id)
         values.put(CalendarContract.Events.TITLE, event.title)
         values.put(CalendarContract.Events.DESCRIPTION, event.description)
-        values.put(CalendarContract.Events.CALENDAR_ID, calendar.id)
+        values.put(CalendarContract.Events.CALENDAR_ID, event.calendarId)
         val uri = cr.insert(CalendarContract.Events.CONTENT_URI, values)
         // Retrieve ID for new event
         val eventID = uri?.lastPathSegment
         Log.d(TAG, "event added with id: $eventID")
     }
 
-    private fun ok(): String = json.stringify(String.serializer(), "ok")
-
-    fun fetchCalendars(): List<CalendarRow> {
-        val calendars = ArrayList<CalendarRow>()
-
-    }
-
-    override suspend fun createEvents(events: List<Event>): String? {
-        requestPermissionsIfNeeded()
-
-        events.forEach {
-            createEvent(it)
-        }
-        return null
-    }
-
-    override suspend fun deleteAllEventsByCalendarId(calendarId: String): String? {
-        requestPermissionsIfNeeded()
+    override suspend fun deleteCalendar(calendarId: String) {
+        require(calendarId.isNotBlank())
         val cr = context!!.contentResolver
         val rows = cr.delete(CalendarContract.Events.CONTENT_URI, CalendarContract.Events.CALENDAR_ID + "=?", arrayOf(calendarId))
         Log.d(TAG, "Removed $rows existing events from your calendar")
-        return null
     }
 
-    private suspend fun requestPermissionsIfNeeded() {
-        val isGranted = permissionService.requestPermissionsIfNeeded(activity!!, listOf(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR))
-        if (!isGranted) {
-            throwPermissionsNotGrantedError()
-        }
+    override suspend fun requestPermissions(): Boolean {
+        return permissionService.requestPermissionsIfNeeded(activity!!, PERMISSIONS)
     }
 
-    private fun throwPermissionsNotGrantedError() {
-        throw CalendarManagerException(errorCode = ErrorCodes.PERMISSIONS_NOT_GRANTED)
-    }
-
-    override suspend fun createCalendar(calendar: Calendar): String? {
-        requestPermissionsIfNeeded()
+    override suspend fun createCalendar(calendar: CreateCalendar): CalendarResult {
         val account = calendar.name
         val accountType = CalendarContract.ACCOUNT_TYPE_LOCAL
         val v = ContentValues()
-        v.put(CalendarContract.Calendars.NAME, calendar.name)
-        v.put(CalendarContract.Calendars.CALENDAR_DISPLAY_NAME, calendar.name)
-        v.put(CalendarContract.Calendars.ACCOUNT_NAME, account)
-        v.put(CalendarContract.Calendars.ACCOUNT_TYPE, accountType)
-        v.put(CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL, CalendarContract.Calendars.CAL_ACCESS_OWNER)
-        v.put(CalendarContract.Calendars.OWNER_ACCOUNT, account)
-        v.put(CalendarContract.Calendars._ID, calendar.id)
-        v.put(CalendarContract.Calendars.SYNC_EVENTS, 1)
-        v.put(CalendarContract.Calendars.VISIBLE, 1)
-        val creationUri: Uri = asSyncAdapter(CalendarContract.Calendars.CONTENT_URI, account, accountType)
+        v.put(Calendars.NAME, calendar.name)
+        v.put(Calendars.CALENDAR_DISPLAY_NAME, calendar.name)
+        v.put(Calendars.ACCOUNT_NAME, account)
+        v.put(Calendars.ACCOUNT_TYPE, accountType)
+        v.put(Calendars.CALENDAR_ACCESS_LEVEL, Calendars.CAL_ACCESS_OWNER)
+        v.put(Calendars.OWNER_ACCOUNT, account)
+        v.put(Calendars._ID, calendar.id)
+        v.put(Calendars.SYNC_EVENTS, 1)
+        v.put(Calendars.VISIBLE, 1)
+        val creationUri: Uri = asSyncAdapter(Calendars.CONTENT_URI, account, accountType)
         val calendarData: Uri? = context!!.contentResolver.insert(creationUri, v)
         if (calendarData != null) {
             Log.d(TAG, "Calendar created with id: " + calendarData.lastPathSegment)
         } else {
             Log.d(TAG, "Calendar found with id: " + calendar.id)
         }
-        return null
+        return CalendarResult(id = calendar.id, isReadOnly = false, name = calendar.name)
     }
 
     private fun asSyncAdapter(uri: Uri, account: String, accountType: String): Uri {
-        return uri.buildUpon().appendQueryParameter(CalendarContract.CALLER_IS_SYNCADAPTER, "true").appendQueryParameter(CalendarContract.Calendars.ACCOUNT_NAME, account).appendQueryParameter(CalendarContract.Calendars.ACCOUNT_TYPE, accountType).build()
+        return uri.buildUpon().appendQueryParameter(CalendarContract.CALLER_IS_SYNCADAPTER, "true")
+                .appendQueryParameter(Calendars.ACCOUNT_NAME, account).appendQueryParameter(Calendars.ACCOUNT_TYPE, accountType).build()
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray): Boolean {
@@ -112,11 +132,12 @@ class CalendarManagerDelegate : CalendarApi, PluginRegistry.RequestPermissionsRe
 
     companion object {
         private const val TAG = "CalendarManagerDelegate"
+        private val PERMISSIONS = listOf(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR)
     }
 }
 
 data class CalendarRow(val id: String, val name: String)
 
-fun Calendar.isSameAs(calendar: CalendarRow): Boolean {
+fun CalendarResult.isSameAs(calendar: CalendarRow): Boolean {
     return calendar.name == name
 }

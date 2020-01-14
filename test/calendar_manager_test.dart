@@ -65,7 +65,7 @@ void main() {
 
     test('deleteAllEventsByCalendarId', () async {
       final calendar = CreateCalendar(name: "Calendar 1");
-      await calendarManager.deleteAllEventsByCalendarId("123");
+      await calendarManager.deleteCalendar("123");
       final param = await paramCapture.future;
       final decodedCalendar = jsonDecode(param["calendarId"]);
       expect(decodedCalendar, calendar);

@@ -1,10 +1,12 @@
 package be.rmdy.calendar_manager
 
 import android.os.Looper
+import android.util.Log
 import androidx.annotation.NonNull
 import be.rmdy.calendar_manager.exceptions.CalendarManagerException
 import be.rmdy.calendar_manager.exceptions.NotImplementedMethodException
-import be.rmdy.calendar_manager.models.Calendar
+import be.rmdy.calendar_manager.models.CalendarResult
+import be.rmdy.calendar_manager.models.CreateCalendar
 import be.rmdy.calendar_manager.models.Event
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
@@ -14,16 +16,14 @@ import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
 import io.flutter.plugin.common.PluginRegistry.Registrar
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import kotlinx.serialization.internal.ArrayListSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonConfiguration
 
 class CalendarManagerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
-
-    private val job = Job()
-
-    private val scope = CoroutineScope(job + Dispatchers.Main.immediate)
 
     private val json = Json(JsonConfiguration.Stable)
     private val delegate: CalendarManagerDelegate = CalendarManagerDelegate()
@@ -53,6 +53,7 @@ class CalendarManagerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
     // depending on the user's project. onAttachedToEngine or registerWith must both be defined
     // in the same class.
     companion object {
+        const val TAG = "CalendarManagerPlugin"
         const val CHANNEL_NAME = "rmdy.be/calendar_manager"
         @Suppress("unused")
         @JvmStatic
@@ -78,31 +79,55 @@ class CalendarManagerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
 
     private suspend fun sendBackResult(result: Result, call: MethodCall) {
         try {
-            result.success(handleMethod(call.method, requireNotNull(call.arguments() as Map<String, Any?>) { "arguments = null" }))
+            var success = handleMethod(call.method, requireNotNull(call.arguments() as Map<String, Any?>) { "arguments = null" })
+            if (success == Unit) {
+                success = null
+            }
+            result.success(success)
         } catch (ex: CalendarManagerException) {
-            result.error(ex.errorCode, ex.errorMessage, ex.errorDetails)
+            result.error(ex)
         } catch (ex: NotImplementedMethodException) {
             result.notImplemented()
         } catch (ex: Exception) {
-            result.error("UNKNOWN", ex.message, null)
+            Log.e(TAG, ex.message, ex)
+            result.error(ex.toCalendarManagerException())
         }
     }
 
+    private fun Result.error(error:CalendarManagerException) {
+        error(error.code.name, error.message, error.details)
+    }
 
+    private fun Exception.toCalendarManagerException():CalendarManagerException {
+        return CalendarManagerException(ErrorCode.UNKNOWN, message, this::class)
+    }
+
+    @Suppress("UnnecessaryVariable")
     private suspend fun handleMethod(method: String, jsonArgs: Map<String, Any?>): Any? {
         println("handleMethod: $method")
         return when (method) {
             "createCalendar" -> {
-                val calendar = json.parse(Calendar.serializer(), jsonArgs["calendar"] as String)
-                delegate.createCalendar(calendar)
+                val calendar = json.parse(CreateCalendar.serializer(), jsonArgs["calendar"] as String)
+                val createdCalender = delegate.createCalendar(calendar)
+                json.stringify(CalendarResult.serializer(), createdCalender)
             }
-            "createEvents" -> {
-                val event = json.parse(ArrayListSerializer(Event.serializer()), jsonArgs["events"] as String)
-                delegate.createEvents(event)
+            "createEvent" -> {
+                val event = json.parse(Event.serializer(), jsonArgs["event"] as String)
+                delegate.createEvent(event)
+                null
             }
-            "deleteAllEventsByCalendarId" -> {
+            "requestPermissions" -> {
+                val granted: Boolean = delegate.requestPermissions()
+                granted
+            }
+            "findAllCalendars" -> {
+                val calendars = delegate.findAllCalendars()
+                json.stringify(ArrayListSerializer(CalendarResult.serializer()), calendars)
+            }
+            "deleteCalendar" -> {
                 val calendarId = jsonArgs["calendarId"] as String
-                delegate.deleteAllEventsByCalendarId(calendarId)
+                delegate.deleteCalendar(calendarId)
+                null
             }
             else -> {
                 throw NotImplementedMethodException()

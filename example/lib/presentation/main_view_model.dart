@@ -37,20 +37,23 @@ class MainViewModelImpl extends ViewModel implements MainViewModel {
         name: "Calendar Example",
         androidInfo: const CreateCalendarAndroidInfo(id: calendarId));
 
+    final calendars = await calendarManager.findAllCalendars();
+    print('calendars: $calendars');
+    var calendar = calendars.firstWhere((c) => c.name == createCalendar.name,
+        orElse: () => null);
+    if (calendar != null) {
+      await calendarManager.deleteCalendar(calendar.id);
+    }
+    calendar = await calendarManager.createCalendar(createCalendar);
+
     final event = Event(
-      calendarId: null,
+      calendarId: calendar.id,
       title: "Event 1",
       startDate: DateTime.now().add(Duration(hours: 1)),
       endDate: DateTime.now().add(Duration(hours: 2)),
       location: "New York",
       description: "Description 1",
     );
-    final calendars = await calendarManager.findAllCalendars();
-    final calendar = calendars.firstWhere((c) => c.name == createCalendar.name,
-        orElse: () => null);
-    if (calendar == null) await calendarManager.createCalendar(createCalendar);
-    await calendarManager.createCalendar(createCalendar);
-    await calendarManager.deleteAllEventsByCalendarId(calendar.id);
     await calendarManager.createEvent(event);
   }
 

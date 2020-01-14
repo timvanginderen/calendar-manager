@@ -9,7 +9,7 @@ public struct CreateCalendar : Codable {
 public struct CalendarResult : Codable {
     let id:String
     let name:String
-    let readOnly:Bool
+    let isReadOnly:Bool
 }
 
 public struct Event: Codable {
@@ -26,7 +26,7 @@ protocol CalendarApi {
     func findAllCalendars() throws
     func createEvent(event: Event) throws
     func createCalendar(calendar: CreateCalendar) throws
-    func deleteAllEventsByCalendarId(calendarId:String) throws
+    func deleteCalendar(calendarId:String) throws
 }
 
 
@@ -51,9 +51,9 @@ public class SwiftCalendarManagerPlugin: NSObject, FlutterPlugin {
         case "createCalendar":
             let calendar = try json.parse(CreateCalendar.self, from: jsonArgs["calendar"] as! String)
             try api.createCalendar(calendar: calendar)
-        case "deleteAllEventsByCalendarId":
+        case "deleteCalendar":
             let calendarId = jsonArgs["calendarId"] as! String
-            try api.deleteAllEventsByCalendarId(calendarId: calendarId)
+            try api.deleteCalendar(calendarId: calendarId)
         default:
             result.notImplemented()
         }
@@ -67,11 +67,15 @@ public class SwiftCalendarManagerPlugin: NSObject, FlutterPlugin {
     }
 }
 
-public struct ErrorCodes {
-    static let UNKNOWN = "UNKNOWN"
-    static let PERMISSIONS_NOT_GRANTED = "PERMISSIONS_NOT_GRANTED"
-    static let CALENDAR_READ_ONLY = "CALENDAR_READ_ONLY"
-    static let CALENDAR_NOT_FOUND = "CALENDAR_NOT_FOUND"
+public enum ErrorCode {
+    case UNKNOWN
+    case PERMISSIONS_NOT_GRANTED
+    case CALENDAR_READ_ONLY
+    case CALENDAR_NOT_FOUND
+    
+    var name: String {
+        get { return String(describing: self) }
+    }
 }
 
 public class Json {
@@ -82,18 +86,18 @@ public class Json {
         return try decoder.decode(type, from: data.data(using: .utf8)!)
     }
     
-    func stringify<Value>(_ value: Value?) throws -> String? where Value : Encodable {
-        if(value == nil) {
+    func stringify<Value>(_ value: Value?) throws -> Any? where Value : Encodable {
+        guard let v = value else {
             return nil
         }
-        
-        if(value is String) {
-            return "\"\(value!)\""
-        } else if(value is Int) {
-            return String(value! as! Int)
+        switch(v.self) {
+        case is String, is Int, is Bool, is Double:
+            return v
+        default:
+            let data = try encoder.encode(value!)
+            return String(data: data, encoding: .utf8)
         }
-        let data = try encoder.encode(value!)
-        return String(data: data, encoding: .utf8)
+        
     }
 }
 
@@ -116,26 +120,32 @@ public class CalendarManagerResult {
         }
     }
     
-    public func error<E>(_ e:E) {
+    private func errorUnknown(message:String?, details:Any?) -> CalendarManagerError {
+        return CalendarManagerError(code: ErrorCode.UNKNOWN, message: message, details: details)
+    }
+    
+    private func toCalendarManagerError(_ e:Any) -> CalendarManagerError {
         switch e {
         case let error as CalendarManagerError:
-            result(FlutterError(code:error.code,message: error.message,details: error.details))
-        case let error as FlutterError:
-            result(FlutterError(code:error.code,message: error.message,details: error.details))
+            return error
         case let error as NSException:
-            result(FlutterError(code: ErrorCodes.UNKNOWN, message: error.userInfo.debugDescription, details: error.self))
+            return errorUnknown(message: error.userInfo.debugDescription, details: error.self)
         case let error as NSError:
-            result(FlutterError(code: ErrorCodes.UNKNOWN, message: error.userInfo.debugDescription, details: error.self))
+            return errorUnknown(message: error.userInfo.debugDescription, details: error.self)
         case let error as NSExceptionName:
-            result(FlutterError(code: ErrorCodes.UNKNOWN, message: error.rawValue, details: error.self))
+            return (errorUnknown(message: error.rawValue, details: error.self))
         case let error as CocoaError:
-            result(FlutterError(code: ErrorCodes.UNKNOWN, message: error.userInfo.debugDescription, details: error.self))
+            return (errorUnknown(message: error.userInfo.debugDescription, details: error.self))
         case let error as Error:
-            result(FlutterError(code: ErrorCodes.UNKNOWN, message: error.localizedDescription, details: error.self))
+            return (errorUnknown(message: error.localizedDescription, details: error.self))
         default:
-            result(FlutterError(code: ErrorCodes.UNKNOWN, message: nil, details: e.self))
+            return (errorUnknown(message: nil, details: e.self))
         }
-        
+    }
+    
+    public func error<E>(_ e:E) {
+        let error = toCalendarManagerError(e)
+        result(FlutterError(code:error.code.name,message: error.message,details: error.details))
     }
     
     public func notImplemented() {
@@ -147,7 +157,7 @@ public class CalendarManagerResult {
 extension EKCalendar {
     
     func toCalendarResult() -> CalendarResult {
-        return CalendarResult(id: calendarIdentifier, name: title, readOnly: !allowsContentModifications)
+        return CalendarResult(id: calendarIdentifier, name: title, isReadOnly: !allowsContentModifications)
     }
 }
 
@@ -162,7 +172,7 @@ public class CalendarManagerDelegate : CalendarApi {
     
     func requestPermissions() throws {
         return requestPermissions({ (granted) in
-              self.result.success(granted)
+            self.result.success(granted)
         })
     }
     func findAllCalendars() throws {
@@ -170,7 +180,7 @@ public class CalendarManagerDelegate : CalendarApi {
         let results = self.eventStore.calendars(for: .event).map { (cal) in
             cal.toCalendarResult()
         }
-        result.success(results)
+        finishWithSuccess(results)
     }
     public func createCalendar(calendar: CreateCalendar) throws {
         try throwIfUnauthorized()
@@ -180,40 +190,31 @@ public class CalendarManagerDelegate : CalendarApi {
         ekCalendar.source = self.eventStore.defaultCalendarForNewEvents?.source
         
         try self.eventStore.saveCalendar(ekCalendar, commit: true)
-        self.finishWithSuccess()
+        self.finishWithSuccess(ekCalendar.toCalendarResult())
     }
     func createEvent(event: Event) throws {
         try throwIfUnauthorized()
-        let ekCalendar = eventStore.calendar(withIdentifier: event.calendarId)
-        if(ekCalendar == nil) {
+        guard let ekCalendar = eventStore.calendar(withIdentifier: event.calendarId) else {
             throw errorCalendarNotFound(calendarId: event.calendarId)
         }
-        try createEvent(ekCalendar: ekCalendar!, event: event)
+        try createEvent(ekCalendar: ekCalendar, event: event)
         finishWithSuccess()
     }
     
-    public func deleteAllEventsByCalendarId(calendarId:String) throws{
+    public func deleteCalendar(calendarId:String) throws{
         try throwIfUnauthorized()
-        let ekCalendar = try findWriteableCalendarOrThrow(calendarId: calendarId)
-        let predicate = self.eventStore.predicateForEvents(
-            withStart: Date(timeIntervalSince1970: 0),
-            end: Date().plusYear(year: 100),
-            calendars: [ekCalendar])
-        let events = self.eventStore.events(matching: predicate)
-        for event in events {
-            try self.eventStore.remove(event, span: EKSpan.thisEvent, commit: false)
-        }
-        try self.eventStore.commit()
+        let ekCalendar = try findCalendarOrThrow(calendarId: calendarId, requireWritable: false)
+        try eventStore.removeCalendar(ekCalendar, commit: true)
         self.finishWithSuccess()
     }
     
-    public func findWriteableCalendarOrThrow(calendarId:String) throws -> EKCalendar {
-        let ekCalendar = eventStore.calendar(withIdentifier: calendarId)
-        if(ekCalendar == nil) {
+    public func findCalendarOrThrow(calendarId:String, requireWritable:Bool = true) throws -> EKCalendar {
+        guard let ekCalendar = eventStore.calendar(withIdentifier: calendarId) else {
             throw errorCalendarNotFound(calendarId: calendarId)
         }
-        let cal = ekCalendar!
-        if(!cal.allowsContentModifications) {
+        
+        let cal = ekCalendar
+        if(requireWritable && !cal.allowsContentModifications) {
             throw errorCalendarReadOnly(calendar: cal)
         }
         return cal
@@ -230,8 +231,8 @@ public class CalendarManagerDelegate : CalendarApi {
         ekEvent.calendar = ekCalendar
         try self.eventStore.save(ekEvent, span: EKSpan.thisEvent, commit: true)
     }
-
-   
+    
+    
     
     private func finishWithSuccess() {
         let x:String? = nil
@@ -239,12 +240,12 @@ public class CalendarManagerDelegate : CalendarApi {
     }
     
     private func finishWithSuccess<T>(_ successObj:T?) where T : Encodable {
-        if(successObj == nil) {
-            self.result.success(successObj)
-        } else {
-            catchErrors {
-                self.result.success(try self.json.stringify(successObj))
-            }
+        guard let s = successObj else {
+            return self.result.success(successObj)
+        }
+        
+        return catchErrors {
+            self.result.success(try self.json.stringify(s))
         }
     }
     
@@ -255,7 +256,7 @@ public class CalendarManagerDelegate : CalendarApi {
     
     private func throwIfUnauthorized() throws {
         if !hasPermissions() {
-           throw errorUnauthorized()
+            throw errorUnauthorized()
         }
     }
     
@@ -278,21 +279,22 @@ public class CalendarManagerDelegate : CalendarApi {
 }
 
 public struct CalendarManagerError : Error {
-    public let code:String
+    public let code:ErrorCode
     public let message:String?
     public let details:Any?
 }
 
+
 func errorUnauthorized() -> CalendarManagerError {
-    return CalendarManagerError(code: ErrorCodes.PERMISSIONS_NOT_GRANTED, message: "Permissions not granted", details: nil)
+    return CalendarManagerError(code: ErrorCode.PERMISSIONS_NOT_GRANTED, message: "Permissions not granted", details: nil)
 }
 
 func errorCalendarNotFound(calendarId: String)-> CalendarManagerError {
-    return CalendarManagerError(code: ErrorCodes.CALENDAR_NOT_FOUND, message: "Calendar with identifier not found: \(calendarId)", details: calendarId)
+    return CalendarManagerError(code: ErrorCode.CALENDAR_NOT_FOUND, message: "Calendar with identifier not found: \(calendarId)", details: calendarId)
 }
 
 func errorCalendarReadOnly(calendar: EKCalendar)-> CalendarManagerError {
-    return CalendarManagerError(code: ErrorCodes.CALENDAR_READ_ONLY, message: "Trying to write to read only calendar: \(calendar)", details: calendar)
+    return CalendarManagerError(code: ErrorCode.CALENDAR_READ_ONLY, message: "Trying to write to read only calendar: \(calendar)", details: calendar)
 }
 
 extension Int64 {

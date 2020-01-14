@@ -39,7 +39,7 @@ CalendarResult _$CalendarResultFromJson(Map<String, dynamic> json) {
   return CalendarResult(
     id: json['id'] as String,
     name: json['name'] as String,
-    isReadOnly: json['isReadOnly'] as String,
+    isReadOnly: json['isReadOnly'] as bool,
   );
 }
 

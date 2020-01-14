@@ -1,11 +1,10 @@
 package be.rmdy.calendar_manager.exceptions
 
+import be.rmdy.calendar_manager.ErrorCode
 import java.lang.Exception
 
-class CalendarManagerException (val errorCode:String,val errorMessage:String?=null,val errorDetails:Any?=null) : Exception(){
-
-    override val message: String?
-        get() = "errorCode='$errorCode', errorMessage=$errorMessage, errorDetails=$errorDetails"
+class CalendarManagerException (val code:ErrorCode, override val message:String?=null, val details:Any?=null) : Exception(){
+    
 }
 
 class NotImplementedMethodException : Exception() {

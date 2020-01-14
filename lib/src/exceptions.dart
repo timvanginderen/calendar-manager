@@ -15,7 +15,12 @@ class CalendarManagerException implements Exception {
   }
 }
 
-enum CalendarManagerErrorCode { PERMISSIONS_NOT_GRANTED, UNKNOWN }
+enum CalendarManagerErrorCode {
+  PERMISSIONS_NOT_GRANTED,
+  CALENDAR_READ_ONLY,
+  CALENDAR_NOT_FOUND,
+  UNKNOWN,
+}
 
 extension Name on CalendarManagerErrorCode {
   String get name => this.toString().split(".").last;

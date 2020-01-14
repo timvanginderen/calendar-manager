@@ -9,7 +9,8 @@ import java.util.*
 
 
 @Serializable
-class Event(
+data class Event(
+        val calendarId:String,
         val title: String,
         val startDate: Date,
         val endDate: Date,
@@ -18,5 +19,15 @@ class Event(
 )
 
 @Serializable
-class Calendar(val id: String,
-               val name: String)
+data class CalendarResult(val id: String,
+                     val name: String,
+                     val isReadOnly:Boolean)
+
+@Serializable
+data class CreateCalendar(val name: String,
+                     val androidInfo: CreateCalendarAndroidInfo) {
+    val id get()= androidInfo.id
+}
+
+@Serializable
+data class CreateCalendarAndroidInfo(val id:String)

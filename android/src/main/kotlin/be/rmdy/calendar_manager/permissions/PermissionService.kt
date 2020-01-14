@@ -16,6 +16,12 @@ class PermissionService : PluginRegistry.RequestPermissionsResultListener {
     }
 
 
+     fun hasPermissions(activity: Activity, permissions: List<String>):Boolean {
+        val notGrantedPermissions =  permissions.filter {
+            ContextCompat.checkSelfPermission(activity, it) != PackageManager.PERMISSION_GRANTED
+        }
+        return notGrantedPermissions.isEmpty()
+    }
 
 
     suspend fun requestPermissionsIfNeeded(activity: Activity, permissions: List<String>): Boolean {
