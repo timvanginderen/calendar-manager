@@ -25,6 +25,14 @@ class HomeScreenContent extends StatelessWidget {
     ));
   }
 
+  Widget createButton(String name, VoidCallback onPressed) {
+    return RaisedButton(
+      key: Key(name.replaceAll(" ", "")),
+      onPressed: onPressed,
+      child: Text(name),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final MainViewModel viewModel = Provider.of(context);
@@ -34,10 +42,12 @@ class HomeScreenContent extends StatelessWidget {
       return buildLoading();
     }
     return Center(
-      child: RaisedButton(
-        child: Text('Create calender and add events'),
-        onPressed: viewModel.onAddEventClick,
-        key: Key("addEvent"),
+      child: Column(
+        children: <Widget>[
+          createButton("Create Event", viewModel.onCreateEventClick),
+          createButton("Delete Calendar", viewModel.onDeleteCalendarClick),
+          createButton("Create Calendar", viewModel.onCreateCalendarClick)
+        ],
       ),
     );
   }
