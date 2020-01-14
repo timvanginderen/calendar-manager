@@ -4,13 +4,13 @@ import EventKit
 
 public struct CreateCalendar : Codable {
     let name:String
-    let color:Int32?
+    let color:Int?
 }
 
 public struct CalendarResult : Codable {
     let id:String
     let name:String
-    let color:Int32?
+    let color:Int?
     let isReadOnly:Bool
 }
 
@@ -156,7 +156,7 @@ public class CalendarManagerResult {
 }
 
 extension UIColor {
-    func rgb() -> Int32? {
+    func rgb() -> Int? {
         var fRed : CGFloat = 0
         var fGreen : CGFloat = 0
         var fBlue : CGFloat = 0
@@ -169,7 +169,7 @@ extension UIColor {
             
             //  (Bits 24-31 are alpha, 16-23 are red, 8-15 are green, 0-7 are blue).
             let rgb = (iAlpha << 24) + (iRed << 16) + (iGreen << 8) + iBlue
-            return Int32(rgb)
+            return rgb
         } else {
             // Could not extract RGBA components:
             return nil
@@ -178,19 +178,23 @@ extension UIColor {
 }
 
 extension CGColor {
-    func toInt() -> Int32? {
+    func toInt() -> Int? {
         return UIColor(cgColor: self).rgb()
     }
 }
 
-extension Int32 {
+extension Int {
     
     func toCgColor() -> CGColor {
-        var bytes = withUnsafeBytes(of: bigEndian) { Array($0) }
-        let alpha = CGFloat(bytes[0]/255)
-        let red = CGFloat(bytes[1]/255)
-        let green = CGFloat(bytes[2]/255)
-        let blue = CGFloat(bytes[3]/255)
+        let rgb = self
+        let iBlue = rgb & 0xFF
+        let iGreen =  (rgb >> 8) & 0xFF
+        let iRed =  (rgb >> 16) & 0xFF
+        let iAlpha =  (rgb >> 24) & 0xFF
+        let alpha = CGFloat(Float(iAlpha)/255.0)
+        let red = CGFloat(Float(iRed)/255.0)
+        let green = CGFloat(Float(iGreen)/255.0)
+        let blue = CGFloat(Float(iBlue)/255.0)
         return UIColor(red: red, green: green, blue: blue, alpha: alpha).cgColor
     }
 }

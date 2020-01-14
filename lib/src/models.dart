@@ -46,6 +46,7 @@ class Event extends _Base {
 class CalendarResult extends _Base {
   final String id;
   final String name;
+  @JsonKey(toJson: toColor24)
   final int color;
   final bool isReadOnly;
 
@@ -63,6 +64,7 @@ class CalendarResult extends _Base {
 @JsonSerializable()
 class CreateCalendar extends _Base {
   final String name;
+  @JsonKey(toJson: toColor24)
   final int color;
   final CreateCalendarAndroidInfo androidInfo;
 
@@ -91,4 +93,8 @@ class CreateCalendarAndroidInfo extends _Base {
       _$CreateCalendarAndroidInfoFromJson(json);
 
   Map<String, dynamic> toJson() => _$CreateCalendarAndroidInfoToJson(this);
+}
+
+int toColor24(int color) {
+  return color & 0xFFFFFF;
 }

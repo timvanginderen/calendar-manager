@@ -2,6 +2,7 @@
 
 package be.rmdy.calendar_manager.models
 
+
 import be.rmdy.calendar_manager.serializers.DateSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers

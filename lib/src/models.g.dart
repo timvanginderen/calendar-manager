@@ -48,7 +48,7 @@ Map<String, dynamic> _$CalendarResultToJson(CalendarResult instance) =>
     <String, dynamic>{
       'id': instance.id,
       'name': instance.name,
-      'color': instance.color,
+      'color': toColor24(instance.color),
       'isReadOnly': instance.isReadOnly,
     };
 
@@ -66,7 +66,7 @@ CreateCalendar _$CreateCalendarFromJson(Map<String, dynamic> json) {
 Map<String, dynamic> _$CreateCalendarToJson(CreateCalendar instance) =>
     <String, dynamic>{
       'name': instance.name,
-      'color': instance.color,
+      'color': toColor24(instance.color),
       'androidInfo': instance.androidInfo,
     };
 

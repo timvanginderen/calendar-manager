@@ -15,7 +15,7 @@ abstract class MainViewModel implements ViewModel {
 
 const TEST_CALENDAR_ID = '1257896543';
 const TEST_CALENDAR_NAME = 'DummyCalendar';
-const TEST_COLOR = 4278545308;
+const int TEST_COLOR = 0x056b9c;
 
 class MainViewModelImpl extends ViewModel implements MainViewModel {
   @override
@@ -48,6 +48,8 @@ class MainViewModelImpl extends ViewModel implements MainViewModel {
             androidInfo: const CreateCalendarAndroidInfo(id: TEST_CALENDAR_ID));
         final CalendarResult calendarResult =
             await calendarManager.createCalendar(createCalendar);
+        print(
+            "cal result color: ${calendarResult.color} , test color: $TEST_COLOR");
         assert(calendarResult.color == TEST_COLOR);
       });
 

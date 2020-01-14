@@ -38,10 +38,10 @@ class CalendarManagerDelegate : CalendarApi, PluginRegistry.RequestPermissionsRe
         val managedCursor = contentResolver.query(uri, projection, null, null, null)
         managedCursor?.use { cursor ->
             while (cursor.moveToNext()) {
-                val id = cursor.getStringByName(Calendars._ID)
-                val name = cursor.getStringByName(Calendars.CALENDAR_DISPLAY_NAME)
-                val accessLevel = cursor.getIntByName(Calendars.CALENDAR_ACCESS_LEVEL)
-                val color = cursor.getIntByName(Calendars.CALENDAR_COLOR)
+                val id = cursor.getStringByName(Calendars._ID)!!
+                val name = cursor.getStringByName(Calendars.CALENDAR_DISPLAY_NAME) ?: ""
+                val accessLevel = cursor.getIntByName(Calendars.CALENDAR_ACCESS_LEVEL)!!
+                val color = cursor.getIntByName(Calendars.CALENDAR_COLOR)?.takeIf { it>0 }
                 val calendar = CalendarResult(id = id, name = name, color = color, isReadOnly = accessLevel <= Calendars.CAL_ACCESS_READ)
                 results += calendar
             }
@@ -83,6 +83,7 @@ class CalendarManagerDelegate : CalendarApi, PluginRegistry.RequestPermissionsRe
         v.put(Calendars.CALENDAR_DISPLAY_NAME, calendar.name)
         v.put(Calendars.ACCOUNT_NAME, account)
         v.put(Calendars.ACCOUNT_TYPE, accountType)
+        v.put(Calendars.CALENDAR_COLOR, calendar.color)
         v.put(Calendars.CALENDAR_ACCESS_LEVEL, Calendars.CAL_ACCESS_OWNER)
         v.put(Calendars.OWNER_ACCOUNT, account)
         v.put(Calendars._ID, calendar.id)
@@ -150,12 +151,18 @@ class CalendarManagerDelegate : CalendarApi, PluginRegistry.RequestPermissionsRe
         private val PERMISSIONS = listOf(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR)
     }
 
-    private fun Cursor.getStringByName(colName: String): String {
-        return getString(getColumnIndexOrThrow(colName))
+    private fun Cursor.getStringByName(colName: String): String? {
+        val index=  getColumnIndexOrThrow(colName)
+        if(isNull(index))
+            return null
+        return getString(index)
     }
 
-    private fun Cursor.getIntByName(colName: String): Int {
-        return getInt(getColumnIndexOrThrow(colName))
+    private fun Cursor.getIntByName(colName: String): Int? {
+        val index=  getColumnIndexOrThrow(colName)
+        if(isNull(index))
+            return null
+        return getInt(index)
     }
 
 }
