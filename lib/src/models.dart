@@ -118,9 +118,9 @@ class EventResult extends _Base {
         assert(title != null);
 
   factory EventResult.fromJson(Map<String, dynamic> json) =>
-      _$EventFromJson(json);
+      _$EventResultFromJson(json);
 
-  Map<String, dynamic> toJson() => _$EventToJson(this);
+  Map<String, dynamic> toJson() => _$EventResultToJson(this);
 
   @override
   List<Object> get props =>
