@@ -38,10 +38,8 @@ class CalendarManagerImpl implements CalendarManager {
   }
 
   Future<T> _invokeMethod<T>(String method, Map<String, dynamic> args) async {
-    print('invokeMethod: $method, $args');
     try {
       final result = await _channel.invokeMethod(method, args);
-      print("result: $result");
       return result;
     } on PlatformException catch (ex) {
       throw CalendarManagerException(
