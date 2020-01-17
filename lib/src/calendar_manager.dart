@@ -78,15 +78,20 @@ class CalendarManagerImpl implements CalendarManager {
   Future<void> createEvent(Event event) async {
     assert(event != null);
     await requestPermissionsOrThrow();
+    return _createEvent(event);
+  }
+
+  Future<void> _createEvent(Event event) async {
     await _invokeMethod("createEvent", {"event": jsonEncode(event)});
   }
 
   Future<void> createEvents(Iterable<Event> events) async {
     assert(events != null);
     assert(events.isNotEmpty);
+    assert(events.every((event) => event != null));
     await requestPermissionsOrThrow();
     for (final event in events) {
-      await createEvent(event);
+      await _createEvent(event);
     }
   }
 }
