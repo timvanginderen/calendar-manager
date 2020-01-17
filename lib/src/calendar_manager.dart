@@ -11,9 +11,12 @@ export 'package:calendar_manager/src/models.dart';
 abstract class CalendarManager {
   Future<CalendarResult> createCalendar(CreateCalendar calendar);
   Future<void> deleteCalendar(String calendarId);
+
+  ///returns the deleted event ids
+  Future<List<EventResult>> deleteAllEventsByCalendarId(String calendarId);
   Future<List<CalendarResult>> findAllCalendars();
-  Future<void> createEvent(Event event);
-  Future<void> createEvents(Iterable<Event> events);
+  Future<EventResult> createEvent(Event event);
+  Future<List<EventResult>> createEvents(Iterable<Event> events);
   Future<bool> requestPermissions();
   factory CalendarManager() => CalendarManagerImpl();
 }
@@ -35,6 +38,15 @@ class CalendarManagerImpl implements CalendarManager {
     final String json = await _invokeMethod(
         'createCalendar', {"calendar": jsonEncode(calendar)});
     return CalendarResult.fromJson(jsonDecode(json));
+  }
+
+  deleteAllEventsByCalendarId(calendarId) async {
+    assert(calendarId != null);
+    await requestPermissionsOrThrow();
+    final String json = await _invokeMethod(
+        'deleteAllEventsByCalendarId', {"calendarId": calendarId});
+    Iterable results = jsonDecode(json);
+    return results.map((e) => EventResult.fromJson(e)).toList();
   }
 
   Future<T> _invokeMethod<T>(String method, Map<String, dynamic> args) async {
@@ -75,23 +87,28 @@ class CalendarManagerImpl implements CalendarManager {
     return granted;
   }
 
-  Future<void> createEvent(Event event) async {
+  createEvent(Event event) async {
     assert(event != null);
     await requestPermissionsOrThrow();
     return _createEvent(event);
   }
 
-  Future<void> _createEvent(Event event) async {
-    await _invokeMethod("createEvent", {"event": jsonEncode(event)});
+  Future<EventResult> _createEvent(Event event) async {
+    final String json =
+        await _invokeMethod("createEvent", {"event": jsonEncode(event)});
+    return EventResult.fromJson(jsonDecode(json));
   }
 
-  Future<void> createEvents(Iterable<Event> events) async {
+  createEvents(events) async {
     assert(events != null);
     assert(events.isNotEmpty);
     assert(events.every((event) => event != null));
     await requestPermissionsOrThrow();
+    final results = <EventResult>[];
     for (final event in events) {
-      await _createEvent(event);
+      final result = await _createEvent(event);
+      results.add(result);
     }
+    return results;
   }
 }

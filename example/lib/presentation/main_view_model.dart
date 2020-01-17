@@ -10,6 +10,7 @@ abstract class MainViewModel implements ViewModel {
   Future<void> onDeleteCalendarClick();
   Future<void> onCreateCalendarClick();
   Future<void> onCauseCrashClick();
+  Future<void> onDeleteAllEventsClick();
 
   factory MainViewModel() => MainViewModelImpl(CalendarManager());
 }
@@ -47,6 +48,13 @@ class MainViewModelImpl extends ViewModel implements MainViewModel {
   }
 
   @override
+  Future<void> onDeleteAllEventsClick() async {
+    final calendar = await findCalendar();
+    print('calendar: $calendar');
+    return calendarManager.deleteAllEventsByCalendarId(calendar.id);
+  }
+
+  @override
   Future<void> onCreateCalendarClick() => doCall(() async {
         final createCalendar = const CreateCalendar(
             name: TEST_CALENDAR_NAME,
@@ -71,12 +79,26 @@ class MainViewModelImpl extends ViewModel implements MainViewModel {
           description:
               "The calendar manager plugin has successfully created an event to the created calendar.",
         );
+        final currentDate = DateTime.now();
+        final date = DateTime(currentDate.year + 1, currentDate.month,
+            currentDate.day, currentDate.hour, currentDate.minute);
+        final event2 = Event(
+          calendarId: calendar.id,
+          title: "Event 2",
+          startDate: date.add(Duration(hours: 1)),
+          endDate: date.add(Duration(hours: 2)),
+          location: "Edegem",
+          description: "Some description",
+        );
         await calendarManager.createEvent(event);
+        print('creating event 2: $event2 on ${event2.startDate}');
+        await calendarManager.createEvent(event2);
       });
 
   Future<CalendarResult> findCalendar() async {
     final List<CalendarResult> calendars =
         await calendarManager.findAllCalendars();
+    print("calendars: $calendars");
     final calendar = calendars.firstOrNull(
         (cal) => cal.id == TEST_CALENDAR_ID || cal.name == TEST_CALENDAR_NAME);
     return calendar;

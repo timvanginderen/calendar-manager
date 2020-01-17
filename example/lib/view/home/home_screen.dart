@@ -47,7 +47,8 @@ class HomeScreenContent extends StatelessWidget {
           createButton("Create Event", viewModel.onCreateEventClick),
           createButton("Delete Calendar", viewModel.onDeleteCalendarClick),
           createButton("Create Calendar", viewModel.onCreateCalendarClick),
-          createButton('Cause crash', viewModel.onCauseCrashClick),
+          createButton('Cause Crash', viewModel.onCauseCrashClick),
+          createButton('Delete All Events ', viewModel.onDeleteAllEventsClick),
         ],
       ),
     );

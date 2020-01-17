@@ -14,7 +14,7 @@ public struct CalendarResult : Codable {
     let isReadOnly:Bool
 }
 
-public struct Event: Codable {
+public struct CreateEvent: Codable {
     let calendarId: String
     let title: String
     let description: String?
@@ -23,12 +23,23 @@ public struct Event: Codable {
     let location: String?
 }
 
+public struct EventResult: Codable {
+    let calendarId: String
+    let eventId:String
+    let title: String
+    let description: String?
+    let startDate: Int64?
+    let endDate: Int64?
+    let location: String?
+}
+
 protocol CalendarApi {
     func requestPermissions() throws
     func findAllCalendars() throws
-    func createEvent(event: Event) throws
+    func createEvent(event: CreateEvent) throws
     func createCalendar(calendar: CreateCalendar) throws
     func deleteCalendar(calendarId:String) throws
+    func deleteAllEventsByCalendarId(calendarId:String) throws
 }
 
 
@@ -48,7 +59,7 @@ public class SwiftCalendarManagerPlugin: NSObject, FlutterPlugin {
         case "findAllCalendars":
             try api.findAllCalendars()
         case "createEvent":
-            let event = try json.parse(Event.self, from: jsonArgs["event"] as! String)
+            let event = try json.parse(CreateEvent.self, from: jsonArgs["event"] as! String)
             try api.createEvent(event: event)
         case "createCalendar":
             let calendar = try json.parse(CreateCalendar.self, from: jsonArgs["calendar"] as! String)
@@ -56,6 +67,9 @@ public class SwiftCalendarManagerPlugin: NSObject, FlutterPlugin {
         case "deleteCalendar":
             let calendarId = jsonArgs["calendarId"] as! String
             try api.deleteCalendar(calendarId: calendarId)
+        case "deleteAllEventsByCalendarId":
+            let calendarId = jsonArgs["calendarId"] as! String
+            try api.deleteAllEventsByCalendarId(calendarId: calendarId)
         default:
             result.notImplemented()
         }
@@ -206,6 +220,32 @@ extension EKCalendar {
     }
 }
 
+extension EKEvent {
+    func toEventResult() -> EventResult {
+        return EventResult(calendarId: calendar.calendarIdentifier, eventId: eventIdentifier, title: title, description: notes, startDate: startDate?.millis, endDate: endDate?.millis, location: location)
+    }
+}
+
+extension EKEventStore {
+    
+    func eventsBetween(startDate:Date, endDate:Date, ekCalendar:EKCalendar) -> [EKEvent] {
+        let maxDateRange = 4
+        let yearsBetween = yearsBetweenDate(startDate: startDate, endDate: endDate)
+        let count = Int(ceil(Double(yearsBetween)/Double(maxDateRange)));
+        var start = startDate
+        var end = startDate.plusYear(year: maxDateRange).minBy(date: endDate)
+        var allEvents = [EKEvent]()
+        for _ in 0...count {
+            let predicate = self.predicateForEvents(withStart: start, end: end, calendars: [ekCalendar])
+            let events = self.events(matching: predicate)
+            allEvents+=events
+            start = start.plusYear(year: 4)
+            end = end.plusYear(year: 4)
+        }
+        return allEvents
+    }
+}
+
 public class CalendarManagerDelegate : CalendarApi {
     let json = Json()
     let eventStore = EKEventStore()
@@ -213,6 +253,21 @@ public class CalendarManagerDelegate : CalendarApi {
     
     init(result:CalendarManagerResult) {
         self.result = result
+    }
+    
+    func deleteAllEventsByCalendarId(calendarId: String) throws {
+        try throwIfUnauthorized()
+        let ekCalendar = try findCalendarOrThrow(calendarId: calendarId, requireWritable: true)
+        let currentDate = Date()
+        let events = eventStore.eventsBetween(startDate: currentDate.minusYear(year: 4), endDate: currentDate.plusYear(year: 4), ekCalendar: ekCalendar)
+        for event in events {
+            try eventStore.remove(event, span: EKSpan.thisEvent, commit: false)
+        }
+        try eventStore.commit()
+        let eventIds = events.map { (event) in
+            event.eventIdentifier
+        }
+        self.finishWithSuccess(eventIds)
     }
     
     func requestPermissions() throws {
@@ -235,17 +290,17 @@ public class CalendarManagerDelegate : CalendarApi {
         ekCalendar.title = calendar.name
         ekCalendar.cgColor = calendar.color?.toCgColor()
         ekCalendar.source = self.eventStore.defaultCalendarForNewEvents?.source
-
+        
         try self.eventStore.saveCalendar(ekCalendar, commit: true)
         self.finishWithSuccess(ekCalendar.toCalendarResult())
     }
-    func createEvent(event: Event) throws {
+    func createEvent(event: CreateEvent) throws {
         try throwIfUnauthorized()
         guard let ekCalendar = eventStore.calendar(withIdentifier: event.calendarId) else {
             throw errorCalendarNotFound(calendarId: event.calendarId)
         }
-        try createEvent(ekCalendar: ekCalendar, event: event)
-        finishWithSuccess()
+        let eventResult = try createEvent(ekCalendar: ekCalendar, event: event)
+        finishWithSuccess(eventResult.eventIdentifier)
     }
     
     public func deleteCalendar(calendarId:String) throws{
@@ -267,7 +322,7 @@ public class CalendarManagerDelegate : CalendarApi {
         return cal
     }
     
-    private func createEvent(ekCalendar:EKCalendar, event:Event) throws {
+    private func createEvent(ekCalendar:EKCalendar, event:CreateEvent, commit:Bool = true) throws -> EKEvent {
         let ekEvent:EKEvent = EKEvent(eventStore: eventStore)
         
         ekEvent.title = event.title
@@ -276,7 +331,8 @@ public class CalendarManagerDelegate : CalendarApi {
         ekEvent.notes = event.description
         ekEvent.location = event.location
         ekEvent.calendar = ekCalendar
-        return try self.eventStore.save(ekEvent, span: EKSpan.thisEvent, commit: true)
+         try self.eventStore.save(ekEvent, span: EKSpan.thisEvent, commit: commit)
+        return ekEvent
     }
     
     
@@ -337,7 +393,7 @@ func errorUnauthorized() -> CalendarManagerError {
 }
 
 func errorCalendarNotFound(calendarId: String)-> CalendarManagerError {
-    return CalendarManagerError(code: ErrorCode.CALENDAR_NOT_FOUND, message: "Calendar with identifier not found: \(calendarId)", details: calendarId)
+    return CalendarManagerError(code: ErrorCode.CALENDAR_NOT_FOUND, message: "Calendar with identifier not found:' \(calendarId)'", details: calendarId)
 }
 
 func errorCalendarReadOnly(calendar: EKCalendar)-> CalendarManagerError {
@@ -350,12 +406,32 @@ extension Int64 {
     }
 }
 
+func yearsBetweenDate(startDate: Date, endDate: Date) -> Int {
+    let calendar = Calendar.current
+    
+    let components = calendar.dateComponents([.year], from: startDate, to: endDate)
+    
+    return components.year!
+}
+
 extension Date {
     func plusYear(year:Int) -> Date {
-        var dateComponent = DateComponents()
-        
-        dateComponent.year = year
-        
-        return Calendar.current.date(byAdding: dateComponent, to: self)!
+        return Calendar.current.date(byAdding: Calendar.Component.year, value: year, to: self)!
+    }
+    
+    func minusYear(year:Int) -> Date {
+        return plusYear(year: -year)
+    }
+    
+    func maxBy(date:Date) -> Date {
+        return Date(timeIntervalSince1970: max(date.timeIntervalSince1970, self.timeIntervalSince1970))
+    }
+    
+    func minBy(date:Date) -> Date {
+        return Date(timeIntervalSince1970: min(date.timeIntervalSince1970, self.timeIntervalSince1970))
+    }
+    
+    var millis:Int64 {
+        return Int64(timeIntervalSince1970)
     }
 }

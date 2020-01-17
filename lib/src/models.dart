@@ -39,7 +39,8 @@ class Event extends _Base {
   Map<String, dynamic> toJson() => _$EventToJson(this);
 
   @override
-  List<Object> get props => [title, description, location, startDate, endDate];
+  List<Object> get props =>
+      [calendarId, title, description, location, startDate, endDate];
 }
 
 @JsonSerializable(disallowUnrecognizedKeys: true)
@@ -97,4 +98,31 @@ class CreateCalendarAndroidInfo extends _Base {
 
 int toColor24(int color) {
   return color & 0xFFFFFF;
+}
+
+@JsonSerializable(disallowUnrecognizedKeys: true)
+@DateJsonConverter()
+class EventResult extends _Base {
+  final String calendarId, eventId, title, description, location;
+  final DateTime startDate, endDate;
+
+  const EventResult({
+    @required this.calendarId,
+    @required this.eventId,
+    @required this.title,
+    @required this.startDate,
+    @required this.endDate,
+    this.description,
+    this.location,
+  })  : assert(calendarId != null),
+        assert(title != null);
+
+  factory EventResult.fromJson(Map<String, dynamic> json) =>
+      _$EventFromJson(json);
+
+  Map<String, dynamic> toJson() => _$EventToJson(this);
+
+  @override
+  List<Object> get props =>
+      [calendarId, eventId, title, description, location, startDate, endDate];
 }
