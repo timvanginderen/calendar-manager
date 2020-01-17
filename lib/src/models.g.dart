@@ -114,3 +114,29 @@ Map<String, dynamic> _$EventResultToJson(EventResult instance) =>
       'startDate': const DateJsonConverter().toJson(instance.startDate),
       'endDate': const DateJsonConverter().toJson(instance.endDate),
     };
+
+DeleteEventResult _$DeleteEventResultFromJson(Map<String, dynamic> json) {
+  $checkKeys(json, allowedKeys: const [
+    'calendarId',
+    'eventId',
+    'title',
+    'startDate',
+    'endDate'
+  ]);
+  return DeleteEventResult(
+    calendarId: json['calendarId'] as String,
+    eventId: json['eventId'] as String,
+    title: json['title'] as String,
+    startDate: const DateJsonConverter().fromJson(json['startDate'] as int),
+    endDate: const DateJsonConverter().fromJson(json['endDate'] as int),
+  );
+}
+
+Map<String, dynamic> _$DeleteEventResultToJson(DeleteEventResult instance) =>
+    <String, dynamic>{
+      'calendarId': instance.calendarId,
+      'eventId': instance.eventId,
+      'title': instance.title,
+      'startDate': const DateJsonConverter().toJson(instance.startDate),
+      'endDate': const DateJsonConverter().toJson(instance.endDate),
+    };

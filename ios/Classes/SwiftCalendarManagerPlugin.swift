@@ -16,17 +16,23 @@ public struct CalendarResult : Codable {
 
 public struct CreateEvent: Codable {
     let calendarId: String
-    let title: String
+    let title: String?
     let description: String?
-    let startDate: Int64
-    let endDate: Int64
+    let startDate: Int64?
+    let endDate: Int64?
     let location: String?
 }
-
-public struct EventResult: Codable {
+public struct DeleteEventResult : Codable {
     let calendarId: String
-    let eventId:String
-    let title: String
+    let eventId:String?
+    let title: String?
+    let startDate: Int64?
+    let endDate: Int64?
+}
+public struct CreateEventResult: Codable {
+    let calendarId: String
+    let eventId:String?
+    let title: String?
     let description: String?
     let startDate: Int64?
     let endDate: Int64?
@@ -221,27 +227,41 @@ extension EKCalendar {
 }
 
 extension EKEvent {
-    func toEventResult() -> EventResult {
-        return EventResult(calendarId: calendar.calendarIdentifier, eventId: eventIdentifier, title: title, description: notes, startDate: startDate?.millis, endDate: endDate?.millis, location: location)
+    func toCreateEventResult() -> CreateEventResult {
+        return CreateEventResult(calendarId: calendar.calendarIdentifier,
+                           eventId: eventIdentifier,
+                           title: title,
+                           description: notes,
+                           startDate: startDate!.millis,
+                           endDate: endDate!.millis,
+                           location: location)
     }
+    
+    func toDeleteEventResult() -> DeleteEventResult {
+           return DeleteEventResult(calendarId: calendar!.calendarIdentifier,
+                              eventId: eventIdentifier,
+                              title: title,
+                              startDate: startDate!.millis,
+                              endDate: endDate!.millis)
+       }
 }
 
 extension EKEventStore {
     
     func eventsBetween(startDate:Date, endDate:Date, ekCalendar:EKCalendar) -> [EKEvent] {
         let maxDateRange = 4
-        let yearsBetween = yearsBetweenDate(startDate: startDate, endDate: endDate)
-        let count = Int(ceil(Double(yearsBetween)/Double(maxDateRange)));
         var start = startDate
         var end = startDate.plusYear(year: maxDateRange).minBy(date: endDate)
         var allEvents = [EKEvent]()
-        for _ in 0...count {
+        var shouldContinue = true
+        repeat {
             let predicate = self.predicateForEvents(withStart: start, end: end, calendars: [ekCalendar])
             let events = self.events(matching: predicate)
             allEvents+=events
-            start = start.plusYear(year: 4)
-            end = end.plusYear(year: 4)
-        }
+            shouldContinue = end<endDate
+            start = end.plusMinutes(1)
+            end = end.plusYear(year: maxDateRange)
+        } while (shouldContinue);
         return allEvents
     }
 }
@@ -259,15 +279,16 @@ public class CalendarManagerDelegate : CalendarApi {
         try throwIfUnauthorized()
         let ekCalendar = try findCalendarOrThrow(calendarId: calendarId, requireWritable: true)
         let currentDate = Date()
-        let events = eventStore.eventsBetween(startDate: currentDate.minusYear(year: 4), endDate: currentDate.plusYear(year: 4), ekCalendar: ekCalendar)
+        let events = eventStore.eventsBetween(startDate: currentDate.minusYear(year: 16), endDate: currentDate.plusYear(year: 16), ekCalendar: ekCalendar)
         for event in events {
+            event.calendar = ekCalendar
             try eventStore.remove(event, span: EKSpan.thisEvent, commit: false)
         }
         try eventStore.commit()
-        let eventIds = events.map { (event) in
-            event.eventIdentifier
+        let eventResults = events.map { (event) in
+            event.toDeleteEventResult()
         }
-        self.finishWithSuccess(eventIds)
+        self.finishWithSuccess(eventResults)
     }
     
     func requestPermissions() throws {
@@ -300,7 +321,7 @@ public class CalendarManagerDelegate : CalendarApi {
             throw errorCalendarNotFound(calendarId: event.calendarId)
         }
         let eventResult = try createEvent(ekCalendar: ekCalendar, event: event)
-        finishWithSuccess(eventResult.eventIdentifier)
+        finishWithSuccess(eventResult)
     }
     
     public func deleteCalendar(calendarId:String) throws{
@@ -322,17 +343,17 @@ public class CalendarManagerDelegate : CalendarApi {
         return cal
     }
     
-    private func createEvent(ekCalendar:EKCalendar, event:CreateEvent, commit:Bool = true) throws -> EKEvent {
+    private func createEvent(ekCalendar:EKCalendar, event:CreateEvent, commit:Bool = true) throws -> CreateEventResult {
         let ekEvent:EKEvent = EKEvent(eventStore: eventStore)
         
         ekEvent.title = event.title
-        ekEvent.startDate = event.startDate.asDate()
-        ekEvent.endDate = event.endDate.asDate()
+        ekEvent.startDate = event.startDate?.asDate()
+        ekEvent.endDate = event.endDate?.asDate()
         ekEvent.notes = event.description
         ekEvent.location = event.location
         ekEvent.calendar = ekCalendar
-         try self.eventStore.save(ekEvent, span: EKSpan.thisEvent, commit: commit)
-        return ekEvent
+        try self.eventStore.save(ekEvent, span: EKSpan.thisEvent, commit: commit)
+        return ekEvent.toCreateEventResult()
     }
     
     
@@ -415,6 +436,11 @@ func yearsBetweenDate(startDate: Date, endDate: Date) -> Int {
 }
 
 extension Date {
+    
+    func plusMinutes(_ minute:Int) ->Date {
+         return Calendar.current.date(byAdding: Calendar.Component.minute, value: minute, to: self)!
+    }
+    
     func plusYear(year:Int) -> Date {
         return Calendar.current.date(byAdding: Calendar.Component.year, value: year, to: self)!
     }
@@ -432,6 +458,6 @@ extension Date {
     }
     
     var millis:Int64 {
-        return Int64(timeIntervalSince1970)
+        return Int64(timeIntervalSince1970) * 1000
     }
 }

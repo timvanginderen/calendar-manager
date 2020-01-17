@@ -51,7 +51,10 @@ class MainViewModelImpl extends ViewModel implements MainViewModel {
   Future<void> onDeleteAllEventsClick() async {
     final calendar = await findCalendar();
     print('calendar: $calendar');
-    return calendarManager.deleteAllEventsByCalendarId(calendar.id);
+    final deletedEvents =
+        await calendarManager.deleteAllEventsByCalendarId(calendar.id);
+    final count = deletedEvents.length;
+    print("deleted events $count: $deletedEvents");
   }
 
   @override
@@ -80,8 +83,7 @@ class MainViewModelImpl extends ViewModel implements MainViewModel {
               "The calendar manager plugin has successfully created an event to the created calendar.",
         );
         final currentDate = DateTime.now();
-        final date = DateTime(currentDate.year + 1, currentDate.month,
-            currentDate.day, currentDate.hour, currentDate.minute);
+        var date = currentDate.plusYear(4).subtract(Duration(days: 2));
         final event2 = Event(
           calendarId: calendar.id,
           title: "Event 2",
@@ -90,9 +92,19 @@ class MainViewModelImpl extends ViewModel implements MainViewModel {
           location: "Edegem",
           description: "Some description",
         );
-        await calendarManager.createEvent(event);
-        print('creating event 2: $event2 on ${event2.startDate}');
-        await calendarManager.createEvent(event2);
+
+        date = currentDate.plusYear(-4).add(Duration(hours: 1));
+        final event3 = Event(
+          calendarId: calendar.id,
+          title: "Event 3",
+          startDate: date.add(Duration(hours: 1)),
+          endDate: date.add(Duration(hours: 2)),
+          location: "Edegem",
+          description: "Some description",
+        );
+        final allEvents = [event, event2, event3];
+        final results = await calendarManager.createEvents(allEvents);
+        print('creating events: $results');
       });
 
   Future<CalendarResult> findCalendar() async {
@@ -124,4 +136,9 @@ extension<T> on Iterable<T> {
   T firstOrNull(bool test(T element)) {
     return this.firstWhere(test, orElse: () => null);
   }
+}
+
+extension on DateTime {
+  DateTime plusYear(int year) => DateTime(this.year + year, this.month,
+      this.day, this.hour, this.minute, this.second);
 }

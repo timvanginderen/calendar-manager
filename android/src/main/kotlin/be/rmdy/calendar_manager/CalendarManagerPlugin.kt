@@ -5,9 +5,7 @@ import android.util.Log
 import androidx.annotation.NonNull
 import be.rmdy.calendar_manager.exceptions.CalendarManagerException
 import be.rmdy.calendar_manager.exceptions.NotImplementedMethodException
-import be.rmdy.calendar_manager.models.CalendarResult
-import be.rmdy.calendar_manager.models.CreateCalendar
-import be.rmdy.calendar_manager.models.Event
+import be.rmdy.calendar_manager.models.*
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
@@ -113,8 +111,13 @@ class CalendarManagerPlugin : FlutterPlugin, ActivityAware, MethodCallHandler {
             }
             "createEvent" -> {
                 val event = json.parse(Event.serializer(), jsonArgs["event"] as String)
-                delegate.createEvent(event)
-                null
+               val eventResult= delegate.createEvent(event)
+                json.stringify(CreateEventResult.serializer(), eventResult)
+            }
+            "deleteAllEventsByCalendarId" -> {
+                val calendarId = jsonArgs["calendarId"] as String
+               val deletedEvents= delegate.deleteAllEventsByCalendarId(calendarId)
+                json.stringify(ArrayListSerializer(DeleteEventResult.serializer()), deletedEvents)
             }
             "requestPermissions" -> {
                 val granted: Boolean = delegate.requestPermissions()

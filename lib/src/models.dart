@@ -19,8 +19,12 @@ abstract class _Base extends Equatable {
 @JsonSerializable(disallowUnrecognizedKeys: true)
 @DateJsonConverter()
 class Event extends _Base {
-  final String calendarId, title, description, location;
-  final DateTime startDate, endDate;
+  final String calendarId;
+  final String title;
+  final String description;
+  final String location;
+  final DateTime startDate;
+  final DateTime endDate;
 
   const Event({
     @required this.calendarId,
@@ -29,10 +33,7 @@ class Event extends _Base {
     @required this.endDate,
     this.description,
     this.location,
-  })  : assert(calendarId != null),
-        assert(title != null),
-        assert(startDate != null),
-        assert(endDate != null);
+  }) : assert(calendarId != null);
 
   factory Event.fromJson(Map<String, dynamic> json) => _$EventFromJson(json);
 
@@ -97,14 +98,20 @@ class CreateCalendarAndroidInfo extends _Base {
 }
 
 int toColor24(int color) {
+  if (color == null) return null;
   return color & 0xFFFFFF;
 }
 
 @JsonSerializable(disallowUnrecognizedKeys: true)
 @DateJsonConverter()
 class EventResult extends _Base {
-  final String calendarId, eventId, title, description, location;
-  final DateTime startDate, endDate;
+  final String calendarId;
+  final String eventId;
+  final String title;
+  final String description;
+  final String location;
+  final DateTime startDate;
+  final DateTime endDate;
 
   const EventResult({
     @required this.calendarId,
@@ -114,8 +121,7 @@ class EventResult extends _Base {
     @required this.endDate,
     this.description,
     this.location,
-  })  : assert(calendarId != null),
-        assert(title != null);
+  });
 
   factory EventResult.fromJson(Map<String, dynamic> json) =>
       _$EventResultFromJson(json);
@@ -125,4 +131,29 @@ class EventResult extends _Base {
   @override
   List<Object> get props =>
       [calendarId, eventId, title, description, location, startDate, endDate];
+}
+
+@JsonSerializable(disallowUnrecognizedKeys: true)
+@DateJsonConverter()
+class DeleteEventResult extends _Base {
+  final String calendarId;
+  final String eventId;
+  final String title;
+  final DateTime startDate;
+  final DateTime endDate;
+
+  const DeleteEventResult(
+      {@required this.calendarId,
+      @required this.eventId,
+      @required this.title,
+      @required this.startDate,
+      @required this.endDate});
+
+  factory DeleteEventResult.fromJson(Map<String, dynamic> json) =>
+      _$DeleteEventResultFromJson(json);
+
+  Map<String, dynamic> toJson() => _$DeleteEventResultToJson(this);
+
+  @override
+  List<Object> get props => [calendarId, eventId, title, startDate, endDate];
 }

@@ -9,11 +9,10 @@ import android.database.Cursor
 import android.net.Uri
 import android.provider.CalendarContract
 import android.provider.CalendarContract.Calendars
+import android.provider.CalendarContract.Events
 import android.util.Log
 import be.rmdy.calendar_manager.exceptions.CalendarManagerException
-import be.rmdy.calendar_manager.models.CalendarResult
-import be.rmdy.calendar_manager.models.CreateCalendar
-import be.rmdy.calendar_manager.models.Event
+import be.rmdy.calendar_manager.models.*
 import be.rmdy.calendar_manager.permissions.PermissionService
 import io.flutter.plugin.common.PluginRegistry
 import java.util.*
@@ -32,11 +31,12 @@ class CalendarManagerDelegate : CalendarApi, PluginRegistry.RequestPermissionsRe
                 Calendars.CALENDAR_DISPLAY_NAME,
                 Calendars.CALENDAR_ACCESS_LEVEL,
                 Calendars.CALENDAR_COLOR)
-        val uri = Uri.parse("content://com.android.calendar/calendars")
+  
+        val uri = Calendars.CONTENT_URI
         val results = ArrayList<CalendarResult>()
         val contentResolver = context!!.contentResolver
-        val managedCursor = contentResolver.query(uri, projection, null, null, null)
-        managedCursor?.use { cursor ->
+        val cursor = contentResolver.query(uri, projection, null, null, null)
+        cursor?.use { cursor ->
             while (cursor.moveToNext()) {
                 val id = cursor.getStringByName(Calendars._ID)!!
                 val name = cursor.getStringByName(Calendars.CALENDAR_DISPLAY_NAME) ?: ""
@@ -51,23 +51,35 @@ class CalendarManagerDelegate : CalendarApi, PluginRegistry.RequestPermissionsRe
 
     }
 
+    private fun Event.toCreateEventResult(eventId:String?):CreateEventResult {
+        return CreateEventResult(
+                calendarId = calendarId,
+                description = description,
+                location = location,
+                title = title,
+                endDate = endDate,
+                eventId = eventId,
+                startDate = startDate
+        )
+    }
 
-    override suspend fun createEvent(event: Event) {
+    override suspend fun createEvent(event: Event):CreateEventResult {
         validateCalendarId(event.calendarId)
         val cr = context!!.contentResolver
         val values = ContentValues()
         val timeZone = TimeZone.getDefault()
-        values.put(CalendarContract.Events.DTSTART, event.startDate.time)
-        values.put(CalendarContract.Events.DTEND, event.endDate.time)
-        values.put(CalendarContract.Events.EVENT_LOCATION, event.location)
-        values.put(CalendarContract.Events.EVENT_TIMEZONE, timeZone.id)
-        values.put(CalendarContract.Events.TITLE, event.title)
-        values.put(CalendarContract.Events.DESCRIPTION, event.description)
-        values.put(CalendarContract.Events.CALENDAR_ID, event.calendarId)
-        val uri = cr.insert(CalendarContract.Events.CONTENT_URI, values)
+        values.put(Events.DTSTART, event.startDate?.time)
+        values.put(Events.DTEND, event.endDate?.time)
+        values.put(Events.EVENT_LOCATION, event.location)
+        values.put(Events.EVENT_TIMEZONE, timeZone.id)
+        values.put(Events.TITLE, event.title)
+        values.put(Events.DESCRIPTION, event.description)
+        values.put(Events.CALENDAR_ID, event.calendarId)
+        val uri = cr.insert(Events.CONTENT_URI, values)
         // Retrieve ID for new event
         val eventID = uri?.lastPathSegment
         Log.d(TAG, "event added with id: $eventID")
+        return event.toCreateEventResult(eventID)
     }
 
     override suspend fun requestPermissions(): Boolean {
@@ -97,6 +109,46 @@ class CalendarManagerDelegate : CalendarApi, PluginRegistry.RequestPermissionsRe
             Log.d(TAG, "Calendar found with id: " + calendar.id)
         }
         return CalendarResult(id = calendar.id, color = calendar.color, isReadOnly = false, name = calendar.name)
+    }
+
+    private fun Long.toDate() = Date(this)
+
+    override suspend fun deleteAllEventsByCalendarId(calendarId: String): List<DeleteEventResult> {
+        val projection = arrayOf(
+                Events._ID,
+                Events.DTSTART,
+                Events.DTEND,
+                Events.TITLE,
+                Events.CALENDAR_ID,
+                Events._ID)
+
+        val uri = Events.CONTENT_URI
+        val results = ArrayList<DeleteEventResult>()
+        val contentResolver = context!!.contentResolver
+        val cursor = contentResolver.query(uri, projection, "${Events.CALENDAR_ID}=?", arrayOf(calendarId), null)
+        cursor?.use { cursor ->
+            while (cursor.moveToNext()) {
+                val id = cursor.getLongByName(Events._ID)
+                val startDate = cursor.getLongByName(Events.DTSTART)?.toDate()
+                val endDate = cursor.getLongByName(Events.DTEND)?.toDate()
+                val title = cursor.getStringByName(Events.TITLE)
+                val cursorCalendarId = cursor.getLongByName(Events.CALENDAR_ID)!!
+                check(cursorCalendarId.toString() == calendarId)
+
+                val event = DeleteEventResult(
+                        eventId = id?.toString(),
+                        startDate = startDate,
+                        endDate = endDate,
+                        title = title,
+                        calendarId = calendarId
+                )
+                results += event
+            }
+        }
+
+        val rows = contentResolver.delete(Events.CONTENT_URI, Events.CALENDAR_ID + "=?", arrayOf(calendarId))
+        check(rows == results.size)
+        return results
     }
 
     override suspend fun deleteCalendar(calendarId: String) {
@@ -156,6 +208,14 @@ class CalendarManagerDelegate : CalendarApi, PluginRegistry.RequestPermissionsRe
         if(isNull(index))
             return null
         return getString(index)
+    }
+
+
+    private fun Cursor.getLongByName(colName: String): Long? {
+        val index=  getColumnIndexOrThrow(colName)
+        if(isNull(index))
+            return null
+        return getLong(index)
     }
 
     private fun Cursor.getIntByName(colName: String): Int? {

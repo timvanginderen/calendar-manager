@@ -12,11 +12,31 @@ import java.util.*
 @Serializable
 data class Event(
         val calendarId: String,
-        val title: String,
-        val startDate: Date,
-        val endDate: Date,
+        val title: String?,
+        val startDate: Date?,
+        val endDate: Date?,
         val location: String?,
         val description: String?
+)
+
+@Serializable
+data class CreateEventResult(
+        val calendarId: String,
+        val eventId: String?,
+        val title: String?,
+        val startDate: Date?,
+        val endDate: Date?,
+        val location: String?,
+        val description: String?
+)
+
+@Serializable
+data class DeleteEventResult(
+        val calendarId: String,
+        val eventId:String?,
+        val title: String?,
+        val startDate: Date?,
+        val endDate: Date?
 )
 
 @Serializable
