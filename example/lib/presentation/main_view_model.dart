@@ -9,6 +9,7 @@ abstract class MainViewModel implements ViewModel {
   Future<void> onCreateEventClick();
   Future<void> onDeleteCalendarClick();
   Future<void> onCreateCalendarClick();
+  Future<void> onCauseCrashClick();
 
   factory MainViewModel() => MainViewModelImpl(CalendarManager());
 }
@@ -25,12 +26,17 @@ class MainViewModelImpl extends ViewModel implements MainViewModel {
 
   MainViewModelImpl(this.calendarManager);
 
-  Future<T> doCall<T>(Future<T> call()) async {
+  Future<void> doCall<T>(Future<T> call()) async {
+    if (isLoading) {
+      print('already loading please wait!');
+      return;
+    }
     isLoading = true;
     notifyListeners();
     try {
       return await call();
     } catch (ex, s) {
+      print('crash catch:');
       print(ex);
       print(s);
     } finally {
@@ -84,6 +90,12 @@ class MainViewModelImpl extends ViewModel implements MainViewModel {
         else
           print('calendar not found');
       });
+
+  @override
+  Future<void> onCauseCrashClick() async {
+    // see if exception is thrown
+    calendarManager.deleteCalendar("not existing id");
+  }
 }
 
 extension<T> on Iterable<T> {

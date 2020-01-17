@@ -231,10 +231,11 @@ public class CalendarManagerDelegate : CalendarApi {
         try throwIfUnauthorized()
         let ekCalendar = EKCalendar(for: .event,
                                     eventStore: self.eventStore)
+        
         ekCalendar.title = calendar.name
         ekCalendar.cgColor = calendar.color?.toCgColor()
         ekCalendar.source = self.eventStore.defaultCalendarForNewEvents?.source
-        
+
         try self.eventStore.saveCalendar(ekCalendar, commit: true)
         self.finishWithSuccess(ekCalendar.toCalendarResult())
     }
@@ -275,7 +276,7 @@ public class CalendarManagerDelegate : CalendarApi {
         ekEvent.notes = event.description
         ekEvent.location = event.location
         ekEvent.calendar = ekCalendar
-        try self.eventStore.save(ekEvent, span: EKSpan.thisEvent, commit: true)
+        return try self.eventStore.save(ekEvent, span: EKSpan.thisEvent, commit: true)
     }
     
     
