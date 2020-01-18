@@ -103,7 +103,6 @@ class CalendarManagerImpl implements CalendarManager {
 
   createEvents(events) async {
     assert(events != null);
-    assert(events.isNotEmpty);
     assert(events.every((event) => event != null));
     await requestPermissionsOrThrow();
     final results = <CreateEventResult>[];
