@@ -18,7 +18,7 @@ abstract class _Base extends Equatable {
 
 @JsonSerializable(disallowUnrecognizedKeys: true)
 @DateJsonConverter()
-class Event extends _Base {
+class CreateEvent extends _Base {
   final String calendarId;
   final String title;
   final String description;
@@ -26,7 +26,7 @@ class Event extends _Base {
   final DateTime startDate;
   final DateTime endDate;
 
-  const Event({
+  const CreateEvent({
     @required this.calendarId,
     @required this.title,
     @required this.startDate,
@@ -35,7 +35,8 @@ class Event extends _Base {
     this.location,
   }) : assert(calendarId != null);
 
-  factory Event.fromJson(Map<String, dynamic> json) => _$EventFromJson(json);
+  factory CreateEvent.fromJson(Map<String, dynamic> json) =>
+      _$EventFromJson(json);
 
   Map<String, dynamic> toJson() => _$EventToJson(this);
 
@@ -104,7 +105,7 @@ int toColor24(int color) {
 
 @JsonSerializable(disallowUnrecognizedKeys: true)
 @DateJsonConverter()
-class EventResult extends _Base {
+class CreateEventResult extends _Base {
   final String calendarId;
   final String eventId;
   final String title;
@@ -113,7 +114,7 @@ class EventResult extends _Base {
   final DateTime startDate;
   final DateTime endDate;
 
-  const EventResult({
+  const CreateEventResult({
     @required this.calendarId,
     @required this.eventId,
     @required this.title,
@@ -123,7 +124,7 @@ class EventResult extends _Base {
     this.location,
   });
 
-  factory EventResult.fromJson(Map<String, dynamic> json) =>
+  factory CreateEventResult.fromJson(Map<String, dynamic> json) =>
       _$EventResultFromJson(json);
 
   Map<String, dynamic> toJson() => _$EventResultToJson(this);

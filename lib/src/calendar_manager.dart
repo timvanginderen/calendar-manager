@@ -17,8 +17,8 @@ abstract class CalendarManager {
   Future<List<DeleteEventResult>> deleteAllEventsByCalendarId(
       String calendarId);
   Future<List<CalendarResult>> findAllCalendars();
-  Future<EventResult> createEvent(Event event);
-  Future<List<EventResult>> createEvents(Iterable<Event> events);
+  Future<CreateEventResult> createEvent(CreateEvent event);
+  Future<List<CreateEventResult>> createEvents(Iterable<CreateEvent> events);
   Future<bool> requestPermissions();
   factory CalendarManager() => CalendarManagerImpl();
 }
@@ -89,16 +89,16 @@ class CalendarManagerImpl implements CalendarManager {
     return granted;
   }
 
-  createEvent(Event event) async {
+  createEvent(CreateEvent event) async {
     assert(event != null);
     await requestPermissionsOrThrow();
     return _createEvent(event);
   }
 
-  Future<EventResult> _createEvent(Event event) async {
+  Future<CreateEventResult> _createEvent(CreateEvent event) async {
     final String json =
         await _invokeMethod("createEvent", {"event": jsonEncode(event)});
-    return EventResult.fromJson(jsonDecode(json));
+    return CreateEventResult.fromJson(jsonDecode(json));
   }
 
   createEvents(events) async {
@@ -106,7 +106,7 @@ class CalendarManagerImpl implements CalendarManager {
     assert(events.isNotEmpty);
     assert(events.every((event) => event != null));
     await requestPermissionsOrThrow();
-    final results = <EventResult>[];
+    final results = <CreateEventResult>[];
     for (final event in events) {
       final result = await _createEvent(event);
       results.add(result);

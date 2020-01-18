@@ -6,7 +6,7 @@ part of 'models.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-Event _$EventFromJson(Map<String, dynamic> json) {
+CreateEvent _$EventFromJson(Map<String, dynamic> json) {
   $checkKeys(json, allowedKeys: const [
     'calendarId',
     'title',
@@ -15,7 +15,7 @@ Event _$EventFromJson(Map<String, dynamic> json) {
     'startDate',
     'endDate'
   ]);
-  return Event(
+  return CreateEvent(
     calendarId: json['calendarId'] as String,
     title: json['title'] as String,
     startDate: const DateJsonConverter().fromJson(json['startDate'] as int),
@@ -25,7 +25,7 @@ Event _$EventFromJson(Map<String, dynamic> json) {
   );
 }
 
-Map<String, dynamic> _$EventToJson(Event instance) => <String, dynamic>{
+Map<String, dynamic> _$EventToJson(CreateEvent instance) => <String, dynamic>{
       'calendarId': instance.calendarId,
       'title': instance.title,
       'description': instance.description,
@@ -83,7 +83,7 @@ Map<String, dynamic> _$CreateCalendarAndroidInfoToJson(
       'id': instance.id,
     };
 
-EventResult _$EventResultFromJson(Map<String, dynamic> json) {
+CreateEventResult _$EventResultFromJson(Map<String, dynamic> json) {
   $checkKeys(json, allowedKeys: const [
     'calendarId',
     'eventId',
@@ -93,7 +93,7 @@ EventResult _$EventResultFromJson(Map<String, dynamic> json) {
     'startDate',
     'endDate'
   ]);
-  return EventResult(
+  return CreateEventResult(
     calendarId: json['calendarId'] as String,
     eventId: json['eventId'] as String,
     title: json['title'] as String,
@@ -104,7 +104,7 @@ EventResult _$EventResultFromJson(Map<String, dynamic> json) {
   );
 }
 
-Map<String, dynamic> _$EventResultToJson(EventResult instance) =>
+Map<String, dynamic> _$EventResultToJson(CreateEventResult instance) =>
     <String, dynamic>{
       'calendarId': instance.calendarId,
       'eventId': instance.eventId,

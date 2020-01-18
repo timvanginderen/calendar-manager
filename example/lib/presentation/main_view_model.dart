@@ -73,7 +73,7 @@ class MainViewModelImpl extends ViewModel implements MainViewModel {
   @override
   Future<void> onCreateEventClick() => doCall(() async {
         final calendar = await findCalendar();
-        final event = Event(
+        final event = CreateEvent(
           calendarId: calendar.id,
           title: "Calendar plugin works!",
           startDate: DateTime.now().add(Duration(hours: 1)),
@@ -84,7 +84,7 @@ class MainViewModelImpl extends ViewModel implements MainViewModel {
         );
         final currentDate = DateTime.now();
         var date = currentDate.plusYear(4).subtract(Duration(days: 2));
-        final event2 = Event(
+        final event2 = CreateEvent(
           calendarId: calendar.id,
           title: "Event 2",
           startDate: date.add(Duration(hours: 1)),
@@ -94,7 +94,7 @@ class MainViewModelImpl extends ViewModel implements MainViewModel {
         );
 
         date = currentDate.plusYear(-4).add(Duration(hours: 1));
-        final event3 = Event(
+        final event3 = CreateEvent(
           calendarId: calendar.id,
           title: "Event 3",
           startDate: date.add(Duration(hours: 1)),
