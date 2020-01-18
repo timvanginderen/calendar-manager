@@ -36,9 +36,9 @@ class CreateEvent extends _Base {
   }) : assert(calendarId != null);
 
   factory CreateEvent.fromJson(Map<String, dynamic> json) =>
-      _$EventFromJson(json);
+      _$CreateEventFromJson(json);
 
-  Map<String, dynamic> toJson() => _$EventToJson(this);
+  Map<String, dynamic> toJson() => _$CreateEventToJson(this);
 
   @override
   List<Object> get props =>
@@ -105,7 +105,7 @@ int toColor24(int color) {
 
 @JsonSerializable(disallowUnrecognizedKeys: true)
 @DateJsonConverter()
-class CreateEventResult extends _Base {
+class EventResult extends _Base {
   final String calendarId;
   final String eventId;
   final String title;
@@ -114,7 +114,7 @@ class CreateEventResult extends _Base {
   final DateTime startDate;
   final DateTime endDate;
 
-  const CreateEventResult({
+  const EventResult({
     @required this.calendarId,
     @required this.eventId,
     @required this.title,
@@ -124,7 +124,7 @@ class CreateEventResult extends _Base {
     this.location,
   });
 
-  factory CreateEventResult.fromJson(Map<String, dynamic> json) =>
+  factory EventResult.fromJson(Map<String, dynamic> json) =>
       _$EventResultFromJson(json);
 
   Map<String, dynamic> toJson() => _$EventResultToJson(this);
@@ -132,29 +132,4 @@ class CreateEventResult extends _Base {
   @override
   List<Object> get props =>
       [calendarId, eventId, title, description, location, startDate, endDate];
-}
-
-@JsonSerializable(disallowUnrecognizedKeys: true)
-@DateJsonConverter()
-class DeleteEventResult extends _Base {
-  final String calendarId;
-  final String eventId;
-  final String title;
-  final DateTime startDate;
-  final DateTime endDate;
-
-  const DeleteEventResult(
-      {@required this.calendarId,
-      @required this.eventId,
-      @required this.title,
-      @required this.startDate,
-      @required this.endDate});
-
-  factory DeleteEventResult.fromJson(Map<String, dynamic> json) =>
-      _$DeleteEventResultFromJson(json);
-
-  Map<String, dynamic> toJson() => _$DeleteEventResultToJson(this);
-
-  @override
-  List<Object> get props => [calendarId, eventId, title, startDate, endDate];
 }

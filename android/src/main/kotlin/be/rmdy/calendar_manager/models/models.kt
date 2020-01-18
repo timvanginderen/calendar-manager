@@ -20,7 +20,7 @@ data class Event(
 )
 
 @Serializable
-data class CreateEventResult(
+data class EventResult(
         val calendarId: String,
         val eventId: String?,
         val title: String?,
@@ -28,15 +28,6 @@ data class CreateEventResult(
         val endDate: Date?,
         val location: String?,
         val description: String?
-)
-
-@Serializable
-data class DeleteEventResult(
-        val calendarId: String,
-        val eventId:String?,
-        val title: String?,
-        val startDate: Date?,
-        val endDate: Date?
 )
 
 @Serializable

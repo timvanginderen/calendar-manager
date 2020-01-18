@@ -51,8 +51,8 @@ class CalendarManagerDelegate : CalendarApi, PluginRegistry.RequestPermissionsRe
 
     }
 
-    private fun Event.toCreateEventResult(eventId:String?):CreateEventResult {
-        return CreateEventResult(
+    private fun Event.toCreateEventResult(eventId:String?): EventResult {
+        return EventResult(
                 calendarId = calendarId,
                 description = description,
                 location = location,
@@ -63,7 +63,7 @@ class CalendarManagerDelegate : CalendarApi, PluginRegistry.RequestPermissionsRe
         )
     }
 
-    override suspend fun createEvent(event: Event):CreateEventResult {
+    override suspend fun createEvent(event: Event): EventResult {
         validateCalendarId(event.calendarId)
         val cr = context!!.contentResolver
         val values = ContentValues()
@@ -113,34 +113,40 @@ class CalendarManagerDelegate : CalendarApi, PluginRegistry.RequestPermissionsRe
 
     private fun Long.toDate() = Date(this)
 
-    override suspend fun deleteAllEventsByCalendarId(calendarId: String): List<DeleteEventResult> {
+    override suspend fun deleteAllEventsByCalendarId(calendarId: String): List<EventResult> {
         val projection = arrayOf(
                 Events._ID,
                 Events.DTSTART,
                 Events.DTEND,
                 Events.TITLE,
+                Events.DESCRIPTION,
+                Events.EVENT_LOCATION,
                 Events.CALENDAR_ID,
                 Events._ID)
 
         val uri = Events.CONTENT_URI
-        val results = ArrayList<DeleteEventResult>()
+        val results = ArrayList<EventResult>()
         val contentResolver = context!!.contentResolver
         val cursor = contentResolver.query(uri, projection, "${Events.CALENDAR_ID}=?", arrayOf(calendarId), null)
-        cursor?.use { cursor ->
-            while (cursor.moveToNext()) {
-                val id = cursor.getLongByName(Events._ID)
-                val startDate = cursor.getLongByName(Events.DTSTART)?.toDate()
-                val endDate = cursor.getLongByName(Events.DTEND)?.toDate()
-                val title = cursor.getStringByName(Events.TITLE)
-                val cursorCalendarId = cursor.getLongByName(Events.CALENDAR_ID)!!
+        cursor?.use { c ->
+            while (c.moveToNext()) {
+                val id = c.getLongByName(Events._ID)
+                val startDate = c.getLongByName(Events.DTSTART)?.toDate()
+                val endDate = c.getLongByName(Events.DTEND)?.toDate()
+                val title = c.getStringByName(Events.TITLE)
+                val cursorCalendarId = c.getLongByName(Events.CALENDAR_ID)!!
+                val description = c.getStringByName(Events.DESCRIPTION)
+                val location = c.getStringByName(Events.EVENT_LOCATION)
                 check(cursorCalendarId.toString() == calendarId)
 
-                val event = DeleteEventResult(
+                val event = EventResult(
                         eventId = id?.toString(),
                         startDate = startDate,
                         endDate = endDate,
                         title = title,
-                        calendarId = calendarId
+                        calendarId = calendarId,
+                        location = location,
+                        description = description
                 )
                 results += event
             }

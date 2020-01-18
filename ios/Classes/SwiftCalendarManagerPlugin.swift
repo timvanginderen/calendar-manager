@@ -22,14 +22,8 @@ public struct CreateEvent: Codable {
     let endDate: Int64?
     let location: String?
 }
-public struct DeleteEventResult : Codable {
-    let calendarId: String
-    let eventId:String?
-    let title: String?
-    let startDate: Int64?
-    let endDate: Int64?
-}
-public struct CreateEventResult: Codable {
+
+public struct EventResult: Codable {
     let calendarId: String
     let eventId:String?
     let title: String?
@@ -227,8 +221,8 @@ extension EKCalendar {
 }
 
 extension EKEvent {
-    func toCreateEventResult() -> CreateEventResult {
-        return CreateEventResult(calendarId: calendar.calendarIdentifier,
+    func toEventResult() -> EventResult {
+        return EventResult(calendarId: calendar!.calendarIdentifier,
                            eventId: eventIdentifier,
                            title: title,
                            description: notes,
@@ -236,14 +230,6 @@ extension EKEvent {
                            endDate: endDate!.millis,
                            location: location)
     }
-    
-    func toDeleteEventResult() -> DeleteEventResult {
-           return DeleteEventResult(calendarId: calendar!.calendarIdentifier,
-                              eventId: eventIdentifier,
-                              title: title,
-                              startDate: startDate!.millis,
-                              endDate: endDate!.millis)
-       }
 }
 
 extension EKEventStore {
@@ -286,7 +272,7 @@ public class CalendarManagerDelegate : CalendarApi {
         }
         try eventStore.commit()
         let eventResults = events.map { (event) in
-            event.toDeleteEventResult()
+            event.toEventResult()
         }
         self.finishWithSuccess(eventResults)
     }
@@ -343,7 +329,7 @@ public class CalendarManagerDelegate : CalendarApi {
         return cal
     }
     
-    private func createEvent(ekCalendar:EKCalendar, event:CreateEvent, commit:Bool = true) throws -> CreateEventResult {
+    private func createEvent(ekCalendar:EKCalendar, event:CreateEvent, commit:Bool = true) throws -> EventResult {
         let ekEvent:EKEvent = EKEvent(eventStore: eventStore)
         
         ekEvent.title = event.title
@@ -353,7 +339,7 @@ public class CalendarManagerDelegate : CalendarApi {
         ekEvent.location = event.location
         ekEvent.calendar = ekCalendar
         try self.eventStore.save(ekEvent, span: EKSpan.thisEvent, commit: commit)
-        return ekEvent.toCreateEventResult()
+        return ekEvent.toEventResult()
     }
     
     

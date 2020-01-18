@@ -6,7 +6,7 @@ part of 'models.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-CreateEvent _$EventFromJson(Map<String, dynamic> json) {
+CreateEvent _$CreateEventFromJson(Map<String, dynamic> json) {
   $checkKeys(json, allowedKeys: const [
     'calendarId',
     'title',
@@ -25,7 +25,8 @@ CreateEvent _$EventFromJson(Map<String, dynamic> json) {
   );
 }
 
-Map<String, dynamic> _$EventToJson(CreateEvent instance) => <String, dynamic>{
+Map<String, dynamic> _$CreateEventToJson(CreateEvent instance) =>
+    <String, dynamic>{
       'calendarId': instance.calendarId,
       'title': instance.title,
       'description': instance.description,
@@ -83,7 +84,7 @@ Map<String, dynamic> _$CreateCalendarAndroidInfoToJson(
       'id': instance.id,
     };
 
-CreateEventResult _$EventResultFromJson(Map<String, dynamic> json) {
+EventResult _$EventResultFromJson(Map<String, dynamic> json) {
   $checkKeys(json, allowedKeys: const [
     'calendarId',
     'eventId',
@@ -93,7 +94,7 @@ CreateEventResult _$EventResultFromJson(Map<String, dynamic> json) {
     'startDate',
     'endDate'
   ]);
-  return CreateEventResult(
+  return EventResult(
     calendarId: json['calendarId'] as String,
     eventId: json['eventId'] as String,
     title: json['title'] as String,
@@ -104,39 +105,13 @@ CreateEventResult _$EventResultFromJson(Map<String, dynamic> json) {
   );
 }
 
-Map<String, dynamic> _$EventResultToJson(CreateEventResult instance) =>
+Map<String, dynamic> _$EventResultToJson(EventResult instance) =>
     <String, dynamic>{
       'calendarId': instance.calendarId,
       'eventId': instance.eventId,
       'title': instance.title,
       'description': instance.description,
       'location': instance.location,
-      'startDate': const DateJsonConverter().toJson(instance.startDate),
-      'endDate': const DateJsonConverter().toJson(instance.endDate),
-    };
-
-DeleteEventResult _$DeleteEventResultFromJson(Map<String, dynamic> json) {
-  $checkKeys(json, allowedKeys: const [
-    'calendarId',
-    'eventId',
-    'title',
-    'startDate',
-    'endDate'
-  ]);
-  return DeleteEventResult(
-    calendarId: json['calendarId'] as String,
-    eventId: json['eventId'] as String,
-    title: json['title'] as String,
-    startDate: const DateJsonConverter().fromJson(json['startDate'] as int),
-    endDate: const DateJsonConverter().fromJson(json['endDate'] as int),
-  );
-}
-
-Map<String, dynamic> _$DeleteEventResultToJson(DeleteEventResult instance) =>
-    <String, dynamic>{
-      'calendarId': instance.calendarId,
-      'eventId': instance.eventId,
-      'title': instance.title,
       'startDate': const DateJsonConverter().toJson(instance.startDate),
       'endDate': const DateJsonConverter().toJson(instance.endDate),
     };
