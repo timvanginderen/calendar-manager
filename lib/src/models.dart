@@ -87,7 +87,7 @@ class CreateCalendar extends _Base {
 class CreateCalendarAndroidInfo extends _Base {
   final String id;
 
-  const CreateCalendarAndroidInfo({@required this.id}) : assert(id != null);
+  const CreateCalendarAndroidInfo({@required this.id});
 
   @override
   List<Object> get props => [id];
