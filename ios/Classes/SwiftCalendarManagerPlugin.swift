@@ -252,13 +252,32 @@ extension EKEventStore {
     }
 }
 
+private class Calendars {
+   private let eventStore:EKEventStore
+    init(eventStore:EKEventStore) {
+        self.eventStore = eventStore;
+    }
+    
+     func findAll() -> [EKCalendar]{
+        return self.eventStore.calendars(for: .event)
+    }
+    
+    func findById(calendarId:String) -> EKCalendar? {
+        return findAll().first { (cal) in
+            cal.calendarIdentifier == calendarId
+        }
+    }
+}
+
 public class CalendarManagerDelegate : CalendarApi {
-    let json = Json()
-    let eventStore = EKEventStore()
+    private let json = Json()
+    private let eventStore = EKEventStore()
+    private let calendarsHelper:Calendars
     let result: CalendarManagerResult
     
     init(result:CalendarManagerResult) {
         self.result = result
+        calendarsHelper = Calendars(eventStore: eventStore)
     }
     
     func deleteAllEventsByCalendarId(calendarId: String) throws {
@@ -282,9 +301,11 @@ public class CalendarManagerDelegate : CalendarApi {
             self.result.success(granted)
         })
     }
+
+    
     func findAllCalendars() throws {
         try throwIfUnauthorized()
-        let results = self.eventStore.calendars(for: .event).map { (cal) in
+        let results = calendarsHelper.findAll().map { (cal) in
             cal.toCalendarResult()
         }
         finishWithSuccess(results)
@@ -303,7 +324,7 @@ public class CalendarManagerDelegate : CalendarApi {
     }
     func createEvent(event: CreateEvent) throws {
         try throwIfUnauthorized()
-        guard let ekCalendar = eventStore.calendar(withIdentifier: event.calendarId) else {
+        guard let ekCalendar = calendarsHelper.findById(calendarId: event.calendarId) else {
             throw errorCalendarNotFound(calendarId: event.calendarId)
         }
         let eventResult = try createEvent(ekCalendar: ekCalendar, event: event)
@@ -318,7 +339,8 @@ public class CalendarManagerDelegate : CalendarApi {
     }
     
     public func findCalendarOrThrow(calendarId:String, requireWritable:Bool = true) throws -> EKCalendar {
-        guard let ekCalendar = eventStore.calendar(withIdentifier: calendarId) else {
+        
+        guard let ekCalendar = calendarsHelper.findById(calendarId: calendarId) else {
             throw errorCalendarNotFound(calendarId: calendarId)
         }
         
